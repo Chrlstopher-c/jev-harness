@@ -1,0 +1,23 @@
+[
+  {"id": "eiffel", "title": "Hauteur de la tour Eiffel", "request": "Quelle est la hauteur de la tour Eiffel ?",
+   "queries": ["tour Eiffel hauteur"], "answer_type": "number", "origin": "test"},
+  {"id": "hugo", "title": "Auteur des Misérables", "request": "Qui a écrit Les Misérables ?",
+   "queries": ["Les Misérables roman auteur"], "answer_type": "entity", "origin": "test"},
+  {"id": "bitcoin", "title": "Prix du Bitcoin", "request": "Quel est le prix du Bitcoin aujourd'hui ?",
+   "queries": ["prix du Bitcoin aujourd'hui"], "answer_type": "number", "origin": "test"},
+  {"id": "sp95", "title": "Prix moyen du SP95 (requêtes fixes)", "request": "Quel est le prix moyen du litre de SP95 en France aujourd'hui ?",
+   "queries": ["prix SP95 aujourd'hui", "prix moyen carburant SP95 France litre"], "answer_type": "number", "origin": "test"},
+  {"id": "lyon", "title": "Population de Lyon", "request": "Quelle est la population actuelle de la ville de Lyon ?",
+   "queries": ["population Lyon habitants", "Lyon nombre d'habitants dernier recensement"], "answer_type": "number", "origin": "test"},
+  {"id": "jo", "title": "Prochains Jeux olympiques (langage naturel)", "request": "quand ont lieu les prochains jeux olympiques ?",
+   "queries": [], "answer_type": "date", "origin": "test"},
+  {"id": "inception", "title": "Réalisateur d'Inception (langage naturel)", "request": "qui a réalisé le film Inception ?",
+   "queries": [], "answer_type": "entity", "origin": "test"},
+  {"id": "sommet", "title": "Plus haut sommet de France (langage naturel)", "request": "quel est le plus haut sommet de france ?",
+   "queries": [], "answer_type": "entity", "origin": "test"},
+  {"id": "sp95-nl", "title": "Litre de SP95 (langage naturel)", "request": "combien coute un litre de sp95 aujourd'hui",
+   "queries": [], "answer_type": "number", "origin": "test"},
+  {"id": "site", "title": "Analyse d'un site (services, tarifs, FAQ)",
+   "request": "analyse le site example.com et liste les services proposés ainsi que les tarifs et la FAQ",
+   "queries": [], "answer_type": "text", "origin": "test"}
+]

@@ -1,0 +1,35 @@
+# ARBORESCENCE
+- jev_harness/actor.py
+- jev_harness/agent.py
+- jev_harness/agent_view.py
+- jev_harness/answer.py
+- jev_harness/brief_gen.py
+- jev_harness/briefs.py
+- jev_harness/browser.py
+- jev_harness/chess_adapters.py
+- jev_harness/chess_agent.py
+- jev_harness/chess_view.py
+- jev_harness/commands.py
+- jev_harness/display.py
+- jev_harness/echohub_load.py
+- jev_harness/echohub.py
+- jev_harness/env.py
+- jev_harness/events.py
+- jev_harness/hub.py
+- jev_harness/jev.py
+- jev_harness/llm.py
+- jev_harness/observe.py
+- jev_harness/planner.py
+- jev_harness/research.py
+- jev_harness/runner.py
+- jev_harness/session.py
+- jev_harness/session_ws.py
+- jev_harness/site_report.py
+- jev_harness/wikipedia.py
+- run.py — CLI brief / question
+- bench_jev.py — banc de latence de Jev
+- tests/test_chess_view.py — tests des coups candidats et de l'évaluation
+- start.sh / stop.sh / restart.sh — session manuelle (PID, log remis à zéro)
+- requirements.txt / requirements-dev.txt / pytest.ini — dépendances et config tests
+- .github/workflows/ci.yml — lint, compilation, tests
+- .env.example — variables requises
