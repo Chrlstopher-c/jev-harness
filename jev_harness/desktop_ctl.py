@@ -128,8 +128,9 @@ class DesktopCtl:
     def focus_window(self, window_id: int) -> None:
         self._msg(f"[con_id={int(window_id)}]", "focus")
 
-    def screenshot(self) -> bytes:
-        return self._run(["grim", "-t", "jpeg", "-q", "70", "-"]).stdout
+    def screenshot(self, scale: float = 1.0) -> bytes:
+        scale = min(1.0, max(0.1, scale))
+        return self._run(["grim", "-t", "jpeg", "-q", "70", "-s", f"{scale:.2f}", "-"]).stdout
 
     def state(self) -> dict:
         wins = [asdict(w) for w in self.windows()]

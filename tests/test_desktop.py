@@ -133,7 +133,7 @@ def test_launch_resolves_app_aliases(tmp_path: Path) -> None:
 @pytest.fixture
 def server(tmp_path: Path) -> Iterator[str]:
     ctl = Recorder(tmp_path)
-    ctl.screenshot = lambda: b"\xff\xd8jpeg"  # type: ignore[method-assign]
+    ctl.screenshot = lambda scale=1.0: b"\xff\xd8jpeg"  # type: ignore[method-assign]
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, ctl, _actions(ctl)))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -152,7 +152,7 @@ def test_http_state_launch_and_journal(server: str) -> None:
     assert len(_call("GET", f"{server}/state").json()["windows"]) == 2
     assert _call("POST", f"{server}/launch", json={"cmd": "terminal"}).json() == {"ok": True}
     assert _call("GET", f"{server}/events").json()["events"][-1]["kind"] == "launch"
-    assert _call("GET", f"{server}/shot.jpg").headers["content-type"] == "image/jpeg"
+    assert _call("GET", f"{server}/shot.jpg?scale=0.5").headers["content-type"] == "image/jpeg"
 
 
 def test_http_rejects_bad_requests(server: str) -> None:

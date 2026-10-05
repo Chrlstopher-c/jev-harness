@@ -10,6 +10,7 @@ from functools import partial
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from loguru import logger
 
@@ -62,11 +63,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, self.ctl.state())
             elif self.path == "/events":
                 self._json(200, {"events": list(EVENTS)})
-            elif self.path == "/shot.jpg":
-                self._send(200, self.ctl.screenshot(), "image/jpeg")
+            elif self.path.split("?")[0] == "/shot.jpg":
+                query = parse_qs(urlparse(self.path).query)
+                self._send(200, self.ctl.screenshot(float(query.get("scale", ["1"])[0])), "image/jpeg")
             else:
                 self._json(404, {"error": "inconnu"})
-        except DesktopError as err:
+        except (DesktopError, ValueError) as err:
             self._json(502, {"error": str(err)})
 
     def do_POST(self) -> None:

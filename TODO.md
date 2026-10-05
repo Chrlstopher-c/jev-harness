@@ -5,7 +5,8 @@
 - [ ] Remplacer Bing par SearXNG auto-hébergé.
 - [ ] Jeux temps réel (vision) : plus tard.
 - [ ] Comparer decider-2b-vision à JevK5 en « réflexion » (mêmes questions du banc de justesse, texte seul) : s'il égale Jev et voit l'écran, c'est le décideur unique (bureau virtuel temps réel). VRAM libre requise (~5 Go).
-- [ ] Bureau virtuel : agent branché dessus (serveur MCP pour Claude Code -p / SDK : act, observe, screenshot, handoff).
+- [x] Bureau virtuel : serveur MCP (état, démarrage, capture, desktop_do) — enregistré, actif à la session suivante.
+- [ ] Bureau virtuel : outil `act(tâche)` local (Jev/LLM) et `handoff` pour réduire encore les tokens de Claude ; banc de mesure.
 - [ ] Bureau virtuel : observation sans pixels (arbre AT-SPI + fenêtres), capture seulement en dernier recours.
 - [ ] Bureau virtuel : trajectoires de souris humaines et jamais identiques (réutiliser l'enregistrement de l'usage réel de Chris).
 - [ ] Bureau virtuel : plusieurs bureaux en grille dans le lab ; Hyprland (config de Chris) imbriqué dans le sway headless.
