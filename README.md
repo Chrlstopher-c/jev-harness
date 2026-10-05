@@ -5,6 +5,9 @@ Lancement manuel : `./start.sh` (session interactive, variables dans `.env.local
 En usage normal le lab `jevk5-lab` démarre et arrête la session.
 CLI : `.venv/bin/python run.py --brief <id>` ou `--ask "<question>"`. Tests : `.venv/bin/pytest`.
 
+## Banc JevK5 vs decider-2b-vision
+Voir `bench/README.md` (méthode, commandes, conclusion).
+
 ## Banc d'échecs
 `STOCKFISH_JS=<script wasm> .venv/bin/python bench_chess.py` : perte en centipions des coups de Jev, de l'heuristique et du hasard
 (positions jouées par Stockfish, IC95 par bootstrap). `BENCH_POSITIONS`, `BENCH_DEPTH`, `BENCH_MODE=random|engine`.

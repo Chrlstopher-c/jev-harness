@@ -4,7 +4,7 @@
 - [ ] Navigateur persistant (−0,9 s) et pages pré-ouvertes en parallèle.
 - [ ] Remplacer Bing par SearXNG auto-hébergé.
 - [ ] Jeux temps réel (vision) : plus tard.
-- [ ] Comparer decider-2b-vision à JevK5 en « réflexion » (mêmes questions du banc de justesse, texte seul) : s'il égale Jev et voit l'écran, c'est le décideur unique (bureau virtuel temps réel). VRAM libre requise (~5 Go).
+- [x] (fait 05/10, voir bench/README.md) Comparer decider-2b-vision à JevK5 en « réflexion » (mêmes questions du banc de justesse, texte seul) : s'il égale Jev et voit l'écran, c'est le décideur unique (bureau virtuel temps réel). VRAM libre requise (~5 Go).
 - [x] Bureau virtuel : serveur MCP (état, démarrage, capture, desktop_do) — enregistré, actif à la session suivante.
 - [ ] Bureau virtuel : outil `act(tâche)` local (Jev/LLM) et `handoff` pour réduire encore les tokens de Claude ; banc de mesure.
 - [ ] Bureau virtuel : observation sans pixels (arbre AT-SPI + fenêtres), capture seulement en dernier recours.
@@ -12,3 +12,5 @@
 - [ ] Bureau virtuel : plusieurs bureaux en grille dans le lab ; Hyprland (config de Chris) imbriqué dans le sway headless.
 - [ ] Bureau virtuel : écriture/lecture sur les plateformes (LinkedIn...) seulement sur autorisation explicite de Chris.
 - [ ] Échecs : étendre le banc à 300+ positions ; tester d'autres représentations pour Jev (moins de tags, évaluation SF en entrée) avant de conclure.
+- [ ] Faire cohabiter Jev (Q8 GGUF ~4,5 Go) et decider-vision (4,3 Go) sur 12 Go ; tester decider-4b (texte) comme point intermédiaire.
+- [ ] Banc : plus de captures de bureau réelles et de tâches de vision (n=15 trop petit), graines multiples.

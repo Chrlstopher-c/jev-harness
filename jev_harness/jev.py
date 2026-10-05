@@ -48,9 +48,12 @@ def choose(state: str, instructions: str, options: list[str]) -> Decision:
 
 
 def yes_no(state: str, instructions: str) -> Decision:
-    r, rtt = _ask(state, {"type": "noul", "instructions": instructions})
+    """Oui/non posé comme un choix yes/no: le type `noul` natif est peu fiable (35,6 % au banc, 100 % en choix)."""
+    r, rtt = _ask(state, {"type": "choice", "instructions": instructions, "criteria": ["yes", "no"]})
     a = r["answers"]["q"]
-    p = float(a["noul"])
+    raw: dict[str, float] = a["probabilities"]
+    total = (raw.get("yes", 0.0) + raw.get("no", 0.0)) or 1.0
+    p = raw.get("yes", 0.0) / total
     label = "oui" if p >= 0.5 else "non"
     logger.info("jev oui/non -> {} (p={:.2f}, {} ms)", label, p, r["latency_ms"])
     _note(f"{instructions} → {label}", r, rtt, {"oui": p, "non": 1 - p})
