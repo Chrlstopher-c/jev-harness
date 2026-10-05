@@ -35,6 +35,7 @@
 - jev_harness/scripts.py — chargeur des scripts JS injectés
 - jev_harness/js/*.js — scripts injectés dans les pages (observe, ghost, mark, board-read, rect)
 - run.py — CLI brief / question
+- bench_chess.py — banc d'échecs (Jev vs heuristique vs hasard, jugé par Stockfish)
 - bench_jev.py — banc de latence de Jev
 - tests/test_desktop_mcp.py — outils MCP (enchaînement, validation, erreurs)
 - tests/test_desktop.py — contrôle du bureau virtuel (arbre sway, touches, API HTTP)

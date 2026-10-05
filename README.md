@@ -5,6 +5,10 @@ Lancement manuel : `./start.sh` (session interactive, variables dans `.env.local
 En usage normal le lab `jevk5-lab` démarre et arrête la session.
 CLI : `.venv/bin/python run.py --brief <id>` ou `--ask "<question>"`. Tests : `.venv/bin/pytest`.
 
+## Banc d'échecs
+`STOCKFISH_JS=<script wasm> .venv/bin/python bench_chess.py` : perte en centipions des coups de Jev, de l'heuristique et du hasard
+(positions jouées par Stockfish, IC95 par bootstrap). `BENCH_POSITIONS`, `BENCH_DEPTH`, `BENCH_MODE=random|engine`.
+
 ## Serveur MCP du bureau virtuel
 `jev_harness/desktop_mcp.py` (venv dédié `.venv-mcp`, `requirements-mcp.txt`) : outils `desktop_state`, `desktop_start`, `desktop_stop`,
 `desktop_screenshot`, `desktop_do` (plusieurs gestes en un appel). Il passe par le labo (`LAB_URL`, à fournir en variable d'environnement

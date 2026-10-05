@@ -11,4 +11,4 @@
 - [ ] Bureau virtuel : trajectoires de souris humaines et jamais identiques (réutiliser l'enregistrement de l'usage réel de Chris).
 - [ ] Bureau virtuel : plusieurs bureaux en grille dans le lab ; Hyprland (config de Chris) imbriqué dans le sway headless.
 - [ ] Bureau virtuel : écriture/lecture sur les plateformes (LinkedIn...) seulement sur autorisation explicite de Chris.
-
+- [ ] Échecs : étendre le banc à 300+ positions ; tester d'autres représentations pour Jev (moins de tags, évaluation SF en entrée) avant de conclure.
