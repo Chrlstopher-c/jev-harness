@@ -1,4 +1,5 @@
-"""Agent d'interaction: le LLM planifie, Jev choisit chaque élément, les gestes sont réels, l'avancement est vérifié sur la page."""
+"""Agent d'interaction: le LLM planifie, Jev choisit l'élément, gestes réels, avancement vérifié sur la page."""
+
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -18,20 +19,27 @@ STUCK_LIMIT = 3
 NO_OPTION = "none of these options"
 REPEAT_LIMIT = 4
 CHECK_SYSTEM = """You judge whether a browser task is accomplished. Reply JSON only: {"accomplished": true or false}.
-Base it ONLY on the page title, URL and visible labels given. Say true only when the page clearly shows the task result."""
+Base it ONLY on the page title, URL and visible labels given. Say true only when the page clearly shows the task
+result."""
 SETTLE_MS = 700
 ASK_TIMEOUT_S = 180
 KINDS = {"type", "toggle", "click", "press", "password", "select", "other"}
 SEARCH_FIELD = re.compile(r"search|recherch|cherch", re.I)
-RISKY = re.compile(r"payer|paiement|commander|acheter|confirmer|envoyer|publier|supprimer|souscrire|abonner|s'inscrire|valider|"
-                   r"\b(buy|pay|order|submit|send|post|purchase|checkout|subscribe|delete|remove)\b", re.I)
+RISKY = re.compile(
+    r"payer|paiement|commander|acheter|confirmer|envoyer|publier|supprimer|souscrire|abonner|s'inscrire|valider|"
+    r"\b(buy|pay|order|submit|send|post|purchase|checkout|subscribe|delete|remove)\b",
+    re.I,
+)
 
 PLAN_SYSTEM = """You plan a browser task for the user, who wrote in French. Reply JSON only:
 {"steps": [{"text": "short French sentence", "kind": "type|toggle|click|press|password|select|other",
- "target": "visible label of the field or button (empty if unknown)", "value": "text to type, or the option to choose"}]}
-kind: type = write text in a field; select = choose an option in a dropdown list (value = the option); password = a password field (the user types it himself); toggle = tick a checkbox;
+ "target": "visible label of the field or button (empty if unknown)", "value": "text to type, or the option to
+ choose"}]}
+kind: type = write text in a field; select = choose an option in a dropdown list (value = the option); password = a
+password field (the user types it himself); toggle = tick a checkbox;
 click = click a button or link; press = press Enter; other = anything else. At most 8 steps, in order.
-Values come ONLY from the user's words. Never invent data. The browser is ALREADY on the right page: no "open the page" step."""
+Values come ONLY from the user's words. Never invent data. The browser is ALREADY on the right page: no "open the
+page" step."""
 
 
 @dataclass
@@ -44,9 +52,14 @@ class Step:
 
     def describe(self) -> str:
         t = f"“{self.target}”" if self.target else "the right element"
-        by_kind = {"type": f"type “{self.value}” in the field {t}", "password": f"let the user type the password in {t}",
-                   "toggle": f"tick the box {t}", "click": f"click {t}" if self.target else "click the most relevant result or button",
-                   "press": "press Enter", "select": f"choose “{self.value}” in the list {t}"}
+        by_kind = {
+            "type": f"type “{self.value}” in the field {t}",
+            "password": f"let the user type the password in {t}",
+            "toggle": f"tick the box {t}",
+            "click": f"click {t}" if self.target else "click the most relevant result or button",
+            "press": "press Enter",
+            "select": f"choose “{self.value}” in the list {t}",
+        }
         return by_kind.get(self.kind) or self.text or "continue the task"
 
 
@@ -91,8 +104,16 @@ class Agent:
         with span("plan", "Planifier la tâche (LLM)") as sp:
             try:
                 data = llm.chat_json(PLAN_SYSTEM, f"Task: {self.task}\nPage: {obs.title} {obs.url}\nVisible: {names}")
-                steps = [Step(str(x.get("text", "")), x.get("kind") if x.get("kind") in KINDS else "other",
-                              str(x.get("target") or ""), str(x.get("value") or "")) for x in data.get("steps", []) if isinstance(x, dict)]
+                steps = [
+                    Step(
+                        str(x.get("text", "")),
+                        x.get("kind") if x.get("kind") in KINDS else "other",
+                        str(x.get("target") or ""),
+                        str(x.get("value") or ""),
+                    )
+                    for x in data.get("steps", [])
+                    if isinstance(x, dict)
+                ]
                 self.steps = steps[:MAX_PLAN] or self.steps
             except llm.LlmError as err:
                 sp["status"], sp["detail"] = "partial", f"plan simple (LLM indisponible: {err})"
@@ -103,11 +124,20 @@ class Agent:
         with span("act", f"Étape {n}") as sp:
             obs = observe(self.s.br.page)
             if self._stuck(obs):
-                return self._give_up(obs, "Je tourne en rond sans que la page change : je m'arrête, dis-moi comment continuer.")
+                return self._give_up(
+                    obs, "Je tourne en rond sans que la page change : je m'arrête, dis-moi comment continuer."
+                )
             cur = self.current
-            state, labels, actions = build(obs, self.task, cur.describe() if cur else self.task,
-                                           self.steps.index(cur) if cur else 0, len(self.steps), self.history,
-                                           self.typed_last, cur.kind if cur else "other")
+            state, labels, actions = build(
+                obs,
+                self.task,
+                cur.describe() if cur else self.task,
+                self.steps.index(cur) if cur else 0,
+                len(self.steps),
+                self.history,
+                self.typed_last,
+                cur.kind if cur else "other",
+            )
             action, label = self._pick(cur, obs, state, labels, actions)
             if self._repeats(label) >= REPEAT_LIMIT:
                 return self._give_up(obs, "Je répète la même action sans progrès : dis-moi comment continuer.")
@@ -123,11 +153,25 @@ class Agent:
     def _candidates(self, cur: Step | None, obs: Observation) -> list[Element]:
         if cur is None or not cur.target:
             return []
-        kinds = {"type": ("text",), "toggle": ("toggle",), "click": ("click",), "password": ("password",), "select": ("select",)}.get(cur.kind, ())
-        return [e for e in obs.items if e.kind in kinds and not e.disabled and _matches(e.label, cur.target)
-                and not (cur.kind == "type" and e.value)]
+        kinds = {
+            "type": ("text",),
+            "toggle": ("toggle",),
+            "click": ("click",),
+            "password": ("password",),
+            "select": ("select",),
+        }.get(cur.kind, ())
+        return [
+            e
+            for e in obs.items
+            if e.kind in kinds
+            and not e.disabled
+            and _matches(e.label, cur.target)
+            and not (cur.kind == "type" and e.value)
+        ]
 
-    def _pick(self, cur: Step | None, obs: Observation, state: str, labels: list[str], actions: dict[str, Action]) -> tuple[Action, str]:
+    def _pick(
+        self, cur: Step | None, obs: Observation, state: str, labels: list[str], actions: dict[str, Action]
+    ) -> tuple[Action, str]:
         """Un seul élément correspond à la cible: on agit directement. Plusieurs ou aucun: Jev tranche."""
         cand = self._candidates(cur, obs)
         if cur and cur.kind == "press" and (self.typed_last or any(e.focused for e in obs.items)):
@@ -142,7 +186,8 @@ class Agent:
 
     def _give_up(self, obs: Observation, msg: str) -> tuple[bool, str]:
         """Avant d'abandonner, un seul appel LLM vérifie si la tâche est en fait accomplie."""
-        user = f"Task: {self.task}\nTitle: {obs.title}\nURL: {obs.url}\nLabels: {'; '.join(e.label for e in obs.items[:14])}"
+        labels = "; ".join(e.label for e in obs.items[:14])
+        user = f"Task: {self.task}\nTitle: {obs.title}\nURL: {obs.url}\nLabels: {labels}"
         try:
             if llm.chat_json(CHECK_SYSTEM, user).get("accomplished") is True:
                 return True, "Tâche terminée."
@@ -163,9 +208,14 @@ class Agent:
             if st.kind == "type":
                 st.done = any(_norm(st.value) in _norm(e.value) for e in fields)
             elif st.kind == "toggle":
-                st.done = any(e.kind == "toggle" and e.checked and (not st.target or _matches(e.label, st.target)) for e in obs.items)
+                st.done = any(
+                    e.kind == "toggle" and e.checked and (not st.target or _matches(e.label, st.target))
+                    for e in obs.items
+                )
             elif st.kind == "select":
-                st.done = any(e.kind == "select" and _norm(st.value) and _norm(st.value) in _norm(e.value) for e in obs.items)
+                st.done = any(
+                    e.kind == "select" and _norm(st.value) and _norm(st.value) in _norm(e.value) for e in obs.items
+                )
 
     def _mark(self, kind: str, label: str = "") -> None:
         pending = [st for st in self.steps if st.kind == kind and not st.done]
@@ -203,9 +253,15 @@ class Agent:
         elif a.kind == "select" and e:
             return self._select(e)
         elif a.kind in ("scroll_down", "scroll_up"):
-            self.actor.scroll(int(page.viewport_size["height"] * 0.7) * (1 if a.kind == "scroll_down" else -1) if page.viewport_size else 500)
+            self.actor.scroll(
+                int(page.viewport_size["height"] * 0.7) * (1 if a.kind == "scroll_down" else -1)
+                if page.viewport_size
+                else 500
+            )
         elif a.kind == "enter":
-            if self._enter_is_sensitive() and not self.s.confirm("Appuyer sur Entrée dans ce champ (cela peut envoyer le formulaire) ?"):
+            if self._enter_is_sensitive() and not self.s.confirm(
+                "Appuyer sur Entrée dans ce champ (cela peut envoyer le formulaire) ?"
+            ):
                 return True, "Envoi refusé, je m'arrête."
             self.actor.press("Enter")
             self._mark("press")
@@ -253,20 +309,31 @@ class Agent:
     def _option_for(self, e: Element) -> str | None:
         """L'option voulue figure dans l'étape: correspondance directe. Sinon Jev choisit parmi les options."""
         pending = [st for st in self.steps if st.kind == "select" and not st.done and st.value]
-        want = next((st.value for st in pending if _matches(e.name, st.target)), pending[0].value if len(pending) == 1 else "")
+        want = next(
+            (st.value for st in pending if _matches(e.name, st.target)), pending[0].value if len(pending) == 1 else ""
+        )
         exact = next((o for o in e.options if want and (_norm(want) == _norm(o) or _norm(want) in _norm(o))), None)
         if exact or not e.options:
             return exact
-        d = jev.choose(f"Field: {e.name}\nWanted: {want or self.task[:160]}", "Which option matches what the user wants?", e.options[:20] + [NO_OPTION])
+        d = jev.choose(
+            f"Field: {e.name}\nWanted: {want or self.task[:160]}",
+            "Which option matches what the user wants?",
+            e.options[:20] + [NO_OPTION],
+        )
         return None if d.label == NO_OPTION else d.label
 
     def _value_for(self, e: Element) -> str | None:
         pending = [st for st in self.steps if st.kind == "type" and not st.done and st.value]
-        hit = next((st for st in pending if _matches(e.label, st.target)), None) or (pending[0] if len(pending) == 1 else None)
+        hit = next((st for st in pending if _matches(e.label, st.target)), None) or (
+            pending[0] if len(pending) == 1 else None
+        )
         return hit.value if hit else None
 
     def _handoff(self, e: Element) -> tuple[bool, str]:
-        self.s.say("assistant", f"Saisis toi-même le mot de passe dans « {e.label} » (je ne le tape jamais), puis écris « ok ».")
+        self.s.say(
+            "assistant",
+            f"Saisis toi-même le mot de passe dans « {e.label} » (je ne le tape jamais), puis écris « ok ».",
+        )
         reply = self.s.ask("", ASK_TIMEOUT_S, handoff=True)
         if reply is None:
             return True, "Pas de réponse, je m'arrête."

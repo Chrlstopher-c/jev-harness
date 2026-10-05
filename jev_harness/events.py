@@ -1,4 +1,5 @@
 """Journal JSONL d'un run: étapes imbriquées (spans) + notes, lues en direct par le banc d'essai."""
+
 import json
 import os
 import shutil
@@ -8,6 +9,8 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterator, TypeVar
+
+from loguru import logger
 
 LIVE_DIR = Path(os.environ.get("JEV_LIVE", "run/live"))
 RUNS_DIR = Path(os.environ.get("JEV_RUNS", "runs"))
@@ -41,9 +44,12 @@ def reset() -> None:
 
 
 def _write(record: dict) -> None:
-    LIVE_DIR.mkdir(parents=True, exist_ok=True)
-    with (LIVE_DIR / "events.jsonl").open("a") as f:
-        f.write(json.dumps({"t": time.time(), **record}, ensure_ascii=False) + "\n")
+    try:
+        LIVE_DIR.mkdir(parents=True, exist_ok=True)
+        with (LIVE_DIR / "events.jsonl").open("a") as f:
+            f.write(json.dumps({"t": time.time(), **record}, ensure_ascii=False) + "\n")
+    except OSError as err:
+        logger.error("journal d'événements illisible/inscriptible: {}", err)
 
 
 def emit(kind: str, text: str, **data: object) -> None:
@@ -54,8 +60,16 @@ def emit(kind: str, text: str, **data: object) -> None:
 def span(kind: str, label: str, **data: object) -> Iterator[dict]:
     _counter[0] += 1
     sid = _counter[0]
-    _write({"phase": "begin", "id": sid, "parent": _stack()[-1] if _stack() else None, "kind": kind,
-            "label": label, **data})
+    _write(
+        {
+            "phase": "begin",
+            "id": sid,
+            "parent": _stack()[-1] if _stack() else None,
+            "kind": kind,
+            "label": label,
+            **data,
+        }
+    )
     _stack().append(sid)
     result: dict = {}
     try:

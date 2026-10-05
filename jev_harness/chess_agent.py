@@ -1,4 +1,5 @@
-"""Joue une partie d'échecs: le LLM écrit le plan, Jev choisit parmi les coups annotés, les coups sont de vrais clics."""
+"""Partie d'échecs: le LLM écrit le plan, Jev choisit parmi les coups annotés, les coups sont de vrais clics."""
+
 import time
 
 import chess
@@ -43,7 +44,9 @@ class ChessAgent:
         return self._summary(pos, time.time() - t0)
 
     def _wait_turn(self, pos: Position) -> bool:
-        return self.s.wait_until(lambda: self.adapter.read().turn == pos.mine or self.adapter.read().status != "playing", WAIT_TURN_S)
+        return self.s.wait_until(
+            lambda: self.adapter.read().turn == pos.mine or self.adapter.read().status != "playing", WAIT_TURN_S
+        )
 
     def _my_move(self, pos: Position) -> None:
         board = chess.Board(pos.fen)
@@ -52,7 +55,10 @@ class ChessAgent:
             cands = candidates(board, self.safety)
             pick, probs = self._choose(board, pos, cands)
             self._publish(board, pos, cands, probs, pick)
-            self.s.say("assistant", f"Coup {board.fullmove_number} · {pick.san}" + (f" ({', '.join(pick.tags)})" if pick.tags else ""))
+            self.s.say(
+                "assistant",
+                f"Coup {board.fullmove_number} · {pick.san}" + (f" ({', '.join(pick.tags)})" if pick.tags else ""),
+            )
             self._execute(pick.move, board, pos)
             self.moves += 1
             if pos.eval_cp is not None:
@@ -71,12 +77,18 @@ class ChessAgent:
 
     def _maybe_replan(self, board: chess.Board, pos: Position) -> None:
         balance = material(board) * (1 if board.turn == chess.WHITE else -1)
-        due = not self.plan or board.fullmove_number - self.plan_at >= REPLAN_EVERY or abs(balance - self.plan_balance) >= REPLAN_SWING
+        due = (
+            not self.plan
+            or board.fullmove_number - self.plan_at >= REPLAN_EVERY
+            or abs(balance - self.plan_balance) >= REPLAN_SWING
+        )
         if not due or not llm.available():
             return
         with span("plan", "Mettre à jour le plan (LLM)") as sp:
-            user = (f"I play {'white' if board.turn == chess.WHITE else 'black'}. FEN: {pos.fen}. Phase: {phase(board)}. "
-                    f"Material balance for me: {balance}. Last opponent move: {pos.last or 'none'}.")
+            user = (
+                f"I play {'white' if board.turn == chess.WHITE else 'black'}. FEN: {pos.fen}. Phase: {phase(board)}. "
+                f"Material balance for me: {balance}. Last opponent move: {pos.last or 'none'}."
+            )
             try:
                 data = llm.chat_json(PLAN_SYSTEM, user)
                 self.plan, self.opening = str(data.get("plan", ""))[:200], str(data.get("opening", ""))[:80]
@@ -105,11 +117,23 @@ class ChessAgent:
             logger.warning("coup {} non pris en compte (essai {})", move.uci(), attempt + 1)
         raise RuntimeError(f"le coup {board.san(move)} n'a pas été joué sur le plateau")
 
-    def _publish(self, board: chess.Board, pos: Position, cands: list[Candidate], probs: dict[str, float], pick: Candidate) -> None:
+    def _publish(
+        self, board: chess.Board, pos: Position, cands: list[Candidate], probs: dict[str, float], pick: Candidate
+    ) -> None:
         top = sorted(cands, key=lambda c: -probs.get(c.label, 0))[:TOP_SHOWN]
-        self.s.hub.broadcast({"t": "chess", "opening": self.opening, "plan": self.plan, "move_no": board.fullmove_number,
-                              "phase": phase(board), "eval": pos.eval_cp, "pick": pick.san, "safety": self.safety,
-                              "candidates": [{"san": c.san, "tags": c.tags, "p": round(probs.get(c.label, 0), 3)} for c in top]})
+        self.s.hub.broadcast(
+            {
+                "t": "chess",
+                "opening": self.opening,
+                "plan": self.plan,
+                "move_no": board.fullmove_number,
+                "phase": phase(board),
+                "eval": pos.eval_cp,
+                "pick": pick.san,
+                "safety": self.safety,
+                "candidates": [{"san": c.san, "tags": c.tags, "p": round(probs.get(c.label, 0), 3)} for c in top],
+            }
+        )
 
     def _summary(self, pos: Position, seconds: float) -> str:
         if self.s.stop_requested:

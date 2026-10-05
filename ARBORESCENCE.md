@@ -9,6 +9,7 @@
 - jev_harness/chess_adapters.py
 - jev_harness/chess_agent.py
 - jev_harness/chess_view.py
+- jev_harness/command_tools.py — outils exécutables par le routeur (navigation, briefs, moteurs, actions, jeux)
 - jev_harness/commands.py
 - jev_harness/display.py
 - jev_harness/echohub_load.py
@@ -26,10 +27,12 @@
 - jev_harness/session_ws.py
 - jev_harness/site_report.py
 - jev_harness/wikipedia.py
+- jev_harness/scripts.py — chargeur des scripts JS injectés
+- jev_harness/js/*.js — scripts injectés dans les pages (observe, ghost, mark, board-read, rect)
 - run.py — CLI brief / question
 - bench_jev.py — banc de latence de Jev
-- tests/test_chess_view.py — tests des coups candidats et de l'évaluation
+- tests/ — unitaires (llm, answer/research, events, agent_view, chess_view) et pages Playwright (conftest.py)
 - start.sh / stop.sh / restart.sh — session manuelle (PID, log remis à zéro)
-- requirements.txt / requirements-dev.txt / pytest.ini — dépendances et config tests
+- requirements.txt / requirements-dev.txt / ruff.toml / pytest.ini — dépendances et config tests
 - .github/workflows/ci.yml — lint, compilation, tests
 - .env.example — variables requises

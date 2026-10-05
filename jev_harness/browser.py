@@ -1,4 +1,5 @@
 """Outils navigateur (Playwright headless): recherche, lecture de page. Aucune décision ici."""
+
 import base64
 import glob
 import os
@@ -7,10 +8,10 @@ from dataclasses import dataclass
 from urllib.parse import parse_qs, quote_plus, urlparse
 
 from loguru import logger
-
-from .display import SIZE, VirtualScreen
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page, sync_playwright
 
+from .display import SIZE, VirtualScreen
 from .events import LIVE_DIR, timed
 
 STABLE_MAX_S = 2.0
@@ -35,8 +36,9 @@ class Hit:
 
 def _chrome_paths() -> tuple[str | None, str | None]:
     full = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome")))
-    shell = sorted(glob.glob(os.path.expanduser(
-        "~/.cache/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell")))
+    shell = sorted(
+        glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))
+    )
     return (full[-1] if full else None), (shell[-1] if shell else None)
 
 
@@ -74,8 +76,15 @@ class Browser:
         args = ["--ozone-platform=x11", f"--window-size={SIZE[0]},{SIZE[1]}", "--window-position=0,0"]
         if self._profile:
             ctx = self._pw.chromium.launch_persistent_context(
-                self._profile, headless=False, executable_path=exe, env=env, viewport=None, locale="fr-FR",
-                args=args + ["--disable-blink-features=AutomationControlled"], ignore_default_args=["--enable-automation"])
+                self._profile,
+                headless=False,
+                executable_path=exe,
+                env=env,
+                viewport=None,
+                locale="fr-FR",
+                args=args + ["--disable-blink-features=AutomationControlled"],
+                ignore_default_args=["--enable-automation"],
+            )
             self._b = ctx
             self.page: Page = ctx.pages[0] if ctx.pages else ctx.new_page()
         else:
@@ -86,8 +95,9 @@ class Browser:
 
     def _launch_headless(self, exe: str | None) -> None:
         if self._profile:
-            self._b = self._pw.chromium.launch_persistent_context(self._profile, headless=True, executable_path=exe,
-                                                                  locale="fr-FR")
+            self._b = self._pw.chromium.launch_persistent_context(
+                self._profile, headless=True, executable_path=exe, locale="fr-FR"
+            )
             self.page = self._b.pages[0] if self._b.pages else self._b.new_page()
         else:
             self._b = self._pw.chromium.launch(headless=True, executable_path=exe)
@@ -97,8 +107,13 @@ class Browser:
         try:
             cdp = ctx.new_cdp_session(self.page)  # type: ignore[attr-defined]
             wid = cdp.send("Browser.getWindowForTarget")["windowId"]
-            cdp.send("Browser.setWindowBounds", {"windowId": wid, "bounds": {
-                "left": 0, "top": 0, "width": SIZE[0], "height": SIZE[1], "windowState": "normal"}})
+            cdp.send(
+                "Browser.setWindowBounds",
+                {
+                    "windowId": wid,
+                    "bounds": {"left": 0, "top": 0, "width": SIZE[0], "height": SIZE[1], "windowState": "normal"},
+                },
+            )
         except Exception as err:
             logger.warning("ajustement de la fenêtre impossible: {}", err)
 
@@ -134,15 +149,21 @@ class Browser:
                 a = el.query_selector("h2 a")
                 sn = el.query_selector(".b_caption p")
                 if a:
-                    hits.append(Hit((a.text_content() or "").strip(), (sn.text_content() if sn else "") or "",
-                                    _unwrap_bing(a.get_attribute("href") or "")))
+                    hits.append(
+                        Hit(
+                            (a.text_content() or "").strip(),
+                            (sn.text_content() if sn else "") or "",
+                            _unwrap_bing(a.get_attribute("href") or ""),
+                        )
+                    )
         return hits
 
     def links(self) -> list[tuple[str, str]]:
         with timed("browser", "lister les liens de la page"):
             raw = self.page.evaluate(
                 "() => Array.from(document.querySelectorAll('a[href]')).map(a => "
-                "[(a.innerText || a.getAttribute('aria-label') || a.title || '').trim().slice(0, 80), a.href])")
+                "[(a.innerText || a.getAttribute('aria-label') || a.title || '').trim().slice(0, 80), a.href])"
+            )
         return [(t, h) for t, h in raw if h.startswith("http")]
 
     def _wait_stable(self) -> None:
@@ -151,7 +172,8 @@ class Browser:
         while time.perf_counter() < deadline:
             try:
                 n = self.page.evaluate("document.body ? document.body.innerText.length : 0")
-            except Exception:
+            except PlaywrightError as err:
+                logger.debug("texte de page illisible: {}", err)
                 n = -1
             same = same + 1 if n == prev and n > MIN_TEXT_LEN else 0
             if same >= 2:

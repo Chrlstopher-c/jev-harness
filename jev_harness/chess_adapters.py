@@ -1,17 +1,17 @@
-"""Lecture et gestes sur un plateau d'échecs. Un adaptateur par site: lire la position, trouver les cases, promouvoir."""
+"""Plateau d'échecs: un adaptateur par site pour lire la position, trouver les cases, promouvoir."""
+
 from dataclasses import dataclass
 from typing import Protocol
 
+from loguru import logger
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page
 
 from .events import timed
+from .scripts import load_js
 
-READ_LOCAL = """() => {
-  const d = document.getElementById('board').dataset;
-  return { fen: d.fen, turn: d.turn, mine: d.human, status: d.status, last: d.last || '', eval: d.eval || '', thinking: d.thinking };
-}"""
-RECT = """(sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect();
-  return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height) }; }"""
+READ_LOCAL = load_js("board-read")
+RECT = load_js("rect")
 
 
 @dataclass
@@ -42,6 +42,7 @@ def _eval_cp(raw: str, mine: str) -> int | None:
 
 class LocalBoard:
     """Plateau local du banc d'essai (page /chess/): l'état est publié dans les attributs data- de #board."""
+
     name = "plateau local"
 
     def __init__(self, page: Page) -> None:
@@ -51,7 +52,8 @@ class LocalBoard:
     def matches(page: Page) -> bool:
         try:
             return bool(page.evaluate("!!document.querySelector('#board[data-fen]')"))
-        except Exception:
+        except PlaywrightError as err:
+            logger.debug("détection du plateau impossible: {}", err)
             return False
 
     def read(self) -> Position:

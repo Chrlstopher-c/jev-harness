@@ -1,10 +1,18 @@
 """Vue d'une partie pour Jev: coups légaux annotés (python-chess), contexte court, garde-fou matériel optionnel."""
+
 from dataclasses import dataclass
 
 import chess
 
 VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
-NAMES = {chess.PAWN: "pawn", chess.KNIGHT: "knight", chess.BISHOP: "bishop", chess.ROOK: "rook", chess.QUEEN: "queen", chess.KING: "king"}
+NAMES = {
+    chess.PAWN: "pawn",
+    chess.KNIGHT: "knight",
+    chess.BISHOP: "bishop",
+    chess.ROOK: "rook",
+    chess.QUEEN: "queen",
+    chess.KING: "king",
+}
 CENTER = {chess.D4, chess.E4, chess.D5, chess.E5}
 MAX_CANDIDATES = 14
 BLUNDER_NET = -2
@@ -58,13 +66,20 @@ def _tags(board: chess.Board, move: chess.Move, gain: int, risk: int) -> list[st
     elif board.gives_check(move):
         tags.append("check")
     if gain:
-        tags.append(f"captures {NAMES[board.piece_at(move.to_square).piece_type] if board.piece_at(move.to_square) else 'pawn'}")
+        tags.append(
+            f"captures {NAMES[board.piece_at(move.to_square).piece_type] if board.piece_at(move.to_square) else 'pawn'}"
+        )
     if move.promotion:
         tags.append("promotes")
     if board.is_castling(move):
         tags.append("castles")
     back = 0 if board.turn == chess.WHITE else 7
-    if piece and piece.piece_type in (chess.KNIGHT, chess.BISHOP) and chess.square_rank(move.from_square) == back and board.fullmove_number <= 14:
+    if (
+        piece
+        and piece.piece_type in (chess.KNIGHT, chess.BISHOP)
+        and chess.square_rank(move.from_square) == back
+        and board.fullmove_number <= 14
+    ):
         tags.append("develops")
     if move.to_square in CENTER and piece and piece.piece_type in (chess.PAWN, chess.KNIGHT):
         tags.append("center")
@@ -80,8 +95,14 @@ def candidates(board: chess.Board, safety: bool) -> list[Candidate]:
         risk = risk_after(board, move)
         tags = _tags(board, move, gain, risk)
         net = gain - risk + (1000 if "CHECKMATE" in tags else 0)
-        score = net * 10 + (2 if "check" in tags else 0) + (3 if "castles" in tags else 0) + (2 if "develops" in tags else 0) \
-            + (1.5 if "center" in tags else 0) + (8 if move.promotion else 0)
+        score = (
+            net * 10
+            + (2 if "check" in tags else 0)
+            + (3 if "castles" in tags else 0)
+            + (2 if "develops" in tags else 0)
+            + (1.5 if "center" in tags else 0)
+            + (8 if move.promotion else 0)
+        )
         out.append(Candidate(move, board.san(move), tags, net, score))
     if safety:
         safe = [c for c in out if c.net > BLUNDER_NET]
@@ -102,5 +123,8 @@ def phase(board: chess.Board) -> str:
 def state_text(board: chess.Board, me: chess.Color, plan: str, last: str) -> str:
     bal = material(board) * (1 if me else -1)
     mat = "equal material" if bal == 0 else f"{'up' if bal > 0 else 'down'} {abs(bal)} pawns of material"
-    return (f"You play {'white' if me else 'black'}. Move {board.fullmove_number}, {phase(board)}, {mat}.\n{board}\n"
-            f"Last opponent move: {last or 'none'}\nPlan: {plan or 'develop pieces, control the center, keep the king safe'}")
+    return (
+        f"You play {'white' if me else 'black'}. Move {board.fullmove_number}, {phase(board)}, {mat}.\n{board}\n"
+        f"Last opponent move: {last or 'none'}\n"
+        f"Plan: {plan or 'develop pieces, control the center, keep the king safe'}"
+    )

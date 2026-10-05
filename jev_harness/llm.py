@@ -1,4 +1,5 @@
 """Client LLM (API compatible OpenAI) avec rotation Groq/Cerebras: un fournisseur limité passe la main au suivant."""
+
 import hashlib
 import json
 import os
@@ -112,15 +113,7 @@ def _retry_after(resp: httpx.Response) -> float:
         return DEFAULT_COOLDOWN_S
 
 
-def _call(slot: Slot, messages: list[dict], max_tokens: int, temperature: float) -> tuple[str, dict]:
-    payload = {"model": slot.model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens,
-               "reasoning_effort": "low", "response_format": {"type": "json_object"}}
-    headers = {"Authorization": f"Bearer {slot.key}", "User-Agent": "jev-harness/0.1"}
-    try:
-        r = httpx.post(f"{slot.base_url}/chat/completions", json=payload, headers=headers, timeout=40)
-    except httpx.HTTPError as err:
-        slot.cooldown_until = time.time() + TRANSIENT_COOLDOWN_S
-        raise LlmError(f"{slot.label}: réseau ({type(err).__name__})") from err
+def _raise_for_status(slot: Slot, r: httpx.Response) -> None:
     if r.status_code == 429:
         slot.cooldown_until = time.time() + _retry_after(r)
         raise LlmError(f"{slot.label}: limite de débit, pause {round(slot.cooldown_until - time.time())} s")
@@ -141,6 +134,24 @@ def _call(slot: Slot, messages: list[dict], max_tokens: int, temperature: float)
         raise LlmError(f"{slot.label}: organisation restreinte, désactivée")
     if r.status_code != 200:
         raise LlmUnavailable(f"{slot.label}: requête refusée {r.status_code} {r.text[:200]}")
+
+
+def _call(slot: Slot, messages: list[dict], max_tokens: int, temperature: float) -> tuple[str, dict]:
+    payload = {
+        "model": slot.model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "reasoning_effort": "low",
+        "response_format": {"type": "json_object"},
+    }
+    headers = {"Authorization": f"Bearer {slot.key}", "User-Agent": "jev-harness/0.1"}
+    try:
+        r = httpx.post(f"{slot.base_url}/chat/completions", json=payload, headers=headers, timeout=40)
+    except httpx.HTTPError as err:
+        slot.cooldown_until = time.time() + TRANSIENT_COOLDOWN_S
+        raise LlmError(f"{slot.label}: réseau ({type(err).__name__})") from err
+    _raise_for_status(slot, r)
     body = r.json()
     return body["choices"][0]["message"]["content"] or "", body.get("usage", {})
 
@@ -171,8 +182,14 @@ def chat_json(system: str, user: str, max_tokens: int = 1500, temperature: float
             continue
         ms = round((time.time() - t0) * 1000)
         logger.info("llm {} ({} ms)", slot.label, ms)
-        emit("llm", slot.label, ms=ms, provider=slot.label.split("#")[0],
-             tokens=usage.get("prompt_tokens", 0), out=usage.get("completion_tokens", 0))
+        emit(
+            "llm",
+            slot.label,
+            ms=ms,
+            provider=slot.label.split("#")[0],
+            tokens=usage.get("prompt_tokens", 0),
+            out=usage.get("completion_tokens", 0),
+        )
         return parse_json(text)
 
 
@@ -180,7 +197,7 @@ def parse_json(text: str) -> dict:
     cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.S)
     cleaned = re.sub(r"^```(?:json)?|```$", "", cleaned.strip(), flags=re.M).strip()
     start, stop = cleaned.find("{"), cleaned.rfind("}")
-    cleaned = cleaned[start:stop + 1] if 0 <= start < stop else cleaned
+    cleaned = cleaned[start : stop + 1] if 0 <= start < stop else cleaned
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError as err:

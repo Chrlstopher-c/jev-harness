@@ -1,33 +1,51 @@
 """Banc de latence de Jev: taille du contexte, concurrence, questions groupées. Usage: python bench_jev.py"""
+
 import statistics as st
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
+from loguru import logger
 
 URL = "http://127.0.0.1:8090/v1/systemone"
 CHARS = [600, 1200, 2400, 4800, 9600, 19200]
 REPS = 5
 Q_YN = {"type": "noul", "instructions": "Does the text state the height of the tower?"}
-Q_CH = {"type": "choice", "instructions": "Which option is the best answer?",
-        "criteria": [f"option {i} about the tower" for i in range(1, 9)]}
+Q_CH = {
+    "type": "choice",
+    "instructions": "Which option is the best answer?",
+    "criteria": [f"option {i} about the tower" for i in range(1, 9)],
+}
 
 
 def corpus() -> str:
-    r = httpx.get("https://fr.wikipedia.org/w/api.php", timeout=20, headers={"User-Agent": "jev-bench/0.1"},
-                  params={"action": "query", "prop": "extracts", "explaintext": 1, "titles": "Tour Eiffel", "format": "json"})
+    params = {"action": "query", "prop": "extracts", "explaintext": 1, "titles": "Tour Eiffel", "format": "json"}
+    try:
+        r = httpx.get(
+            "https://fr.wikipedia.org/w/api.php", timeout=20, headers={"User-Agent": "jev-bench/0.1"}, params=params
+        )
+        r.raise_for_status()
+    except httpx.HTTPError as err:
+        logger.error("corpus Wikipédia indisponible: {}", err)
+        raise
     return next(iter(r.json()["query"]["pages"].values()))["extract"]
 
 
 def call(state: str, questions: dict) -> tuple[float, float, int]:
     t = time.perf_counter()
-    r = httpx.post(URL, json={"state": state, "questions": questions}, timeout=120).json()
+    try:
+        r = httpx.post(URL, json={"state": state, "questions": questions}, timeout=120).json()
+    except httpx.HTTPError as err:
+        logger.error("appel Jev échoué: {}", err)
+        raise
     return r["latency_ms"], (time.perf_counter() - t) * 1000, r["usage"]["input_tokens"]
 
 
 def row(label: str, runs: list[tuple[float, float, int]]) -> None:
-    print(f"{label:34} tokens {runs[0][2]:5d} | serveur {st.mean(r[0] for r in runs):6.0f} ms | "
-          f"aller-retour {st.mean(r[1] for r in runs):6.0f} ms")
+    print(
+        f"{label:34} tokens {runs[0][2]:5d} | serveur {st.mean(r[0] for r in runs):6.0f} ms | "
+        f"aller-retour {st.mean(r[1] for r in runs):6.0f} ms"
+    )
 
 
 if __name__ == "__main__":
@@ -43,8 +61,10 @@ if __name__ == "__main__":
         with ThreadPoolExecutor(k) as ex:
             runs = list(ex.map(lambda _: call(text[:1200], {"q": Q_YN}), range(k)))
         wall = (time.perf_counter() - t) * 1000
-        print(f"{k} appels simultanés | lot {wall:6.0f} ms | par appel serveur {st.mean(r[0] for r in runs):5.0f} ms"
-              f" | vs séquentiel {k * 1000 // 1:d}x?".replace(f" | vs séquentiel {k * 1000}x?", ""))
+        print(
+            f"{k} appels simultanés | lot {wall:6.0f} ms | par appel serveur {st.mean(r[0] for r in runs):5.0f} ms"
+            f" | vs séquentiel {k * 1000 // 1:d}x?".replace(f" | vs séquentiel {k * 1000}x?", "")
+        )
     print("== 3. questions groupées sur un même contexte (1200 car.)")
     for k in (1, 2, 4):
         qs = {f"q{i}": {**Q_YN, "instructions": f"Does the text mention topic number {i}?"} for i in range(k)}

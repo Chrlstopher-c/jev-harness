@@ -1,15 +1,16 @@
 """Analyse d'un site: Jev choisit les pages utiles, le LLM rédige le rapport, contrôlé contre le texte lu."""
+
 import re
-from contextlib import nullcontext
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass
 from difflib import SequenceMatcher, get_close_matches
 from urllib.parse import urldefrag, urlparse
 
 from loguru import logger
+from playwright.sync_api import Error as PlaywrightError
 
-from . import jev, llm
-from . import events
+from . import events, jev, llm
 from .browser import Browser
 from .events import emit, span
 
@@ -26,8 +27,11 @@ MAX_CHARS_PAGE = 14000
 NONE_OPTION = "aucun de ces liens"
 DOMAIN = re.compile(r"(?:https?://)?((?:[a-z0-9-]+\.)+[a-z]{2,})(/[^\s]*)?", re.I)
 ANALYSE = re.compile(r"analys|audit|liste|résum|présent|décri|inspect", re.I)
-DEFAULT_SECTIONS = [("services", "Services proposés", "services offered"), ("tarifs", "Tarifs", "pricing and rates"),
-                    ("faq", "FAQ", "frequently asked questions")]
+DEFAULT_SECTIONS = [
+    ("services", "Services proposés", "services offered"),
+    ("tarifs", "Tarifs", "pricing and rates"),
+    ("faq", "FAQ", "frequently asked questions"),
+]
 PLAN_SYSTEM = """The user wants information extracted from a website. Reply JSON only:
 {"sections": [{"key": "short_id", "title": "title in the user's language", "hint": "what to look for, in English"}]}
 1 to 5 sections, exactly what the user asked for."""
@@ -114,7 +118,8 @@ def read_pages(br: Browser, urls: list[str]) -> dict[str, str]:
         with span("page", f"Page n°{i} : {urlparse(url).path or '/'}", url=url) as pg:
             try:
                 br.open(url)
-            except Exception:
+            except (PlaywrightError, OSError) as err:
+                logger.warning("page {} inaccessible: {}", url, err)
                 pg["status"], pg["detail"] = "error", "Page inaccessible"
                 continue
             texts[url] = br.text()[:MAX_CHARS_PAGE]
@@ -195,7 +200,7 @@ def analyse_site(request: str, url: str, shared: Browser | None = None) -> bool:
     with span("plan", "Comprendre la demande (LLM)") as sp:
         sections = plan_sections(request)
         sp["detail"] = " · ".join(s.title for s in sections)
-    with (nullcontext(shared) if shared else Browser()) as br:
+    with nullcontext(shared) if shared else Browser() as br:
         with span("page", "Page d'accueil", url=url) as pg:
             br.open(url)
             home = br.text()[:MAX_CHARS_PAGE]
@@ -213,6 +218,10 @@ def analyse_site(request: str, url: str, shared: Browser | None = None) -> bool:
             sp["status"], sp["detail"] = "error", f"LLM indisponible: {err}"
             return False
         n = sum(len(s["items"]) for s in report["sections"])
-        sp["detail"] = f"{n} éléments retenus" + (f", {dropped} retiré(s) car absents du texte du site" if dropped else "") + (f", {merged} doublon(s) fusionné(s)" if merged else "")
+        sp["detail"] = (
+            f"{n} éléments retenus"
+            + (f", {dropped} retiré(s) car absents du texte du site" if dropped else "")
+            + (f", {merged} doublon(s) fusionné(s)" if merged else "")
+        )
     emit("report", report["summary"], sections=report["sections"], dropped=dropped, merged=merged, pages=list(texts))
     return True

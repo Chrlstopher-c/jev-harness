@@ -1,4 +1,5 @@
 """Formuler la réponse finale: Jev choisit la phrase qui répond, puis la valeur chiffrée si elle existe."""
+
 import re
 from dataclasses import dataclass
 
@@ -12,7 +13,8 @@ MARKET_RULE = """
 This is a price/offer question: do not pick one random listing. Give the range or typical price actually shown
 (for example "de 112 000 € à 389 900 € (annonces d'occasion)" or "à partir de 135 000 €"), saying what it applies to
 (new, used, listings). Copy every figure exactly as written in the passage."""
-VALUE = re.compile(r"(?<![A-Za-zÀ-ÿ\d])(?:\d[\d\s\u00a0\u202f.,]*\d(?:[\s\u00a0]?(?:€|%|km|m|habitants|millions|milliards))?|\d)(?![A-Za-zÀ-ÿ\d])")
+_NUMBER = r"\d[\d\s\u00a0\u202f.,]*\d(?:[\s\u00a0]?(?:€|%|km|m|habitants|millions|milliards))?|\d"
+VALUE = re.compile(rf"(?<![A-Za-zÀ-ÿ\d])(?:{_NUMBER})(?![A-Za-zÀ-ÿ\d])")
 
 
 @dataclass
@@ -21,8 +23,9 @@ class Formulated:
     value: str | None
 
 
-NUMERIC_Q = re.compile(r"prix|hauteur|population|combien|nombre|taille|âge|année|date|quand|distance|poids|cours|coût",
-                       re.I)
+NUMERIC_Q = re.compile(
+    r"prix|hauteur|population|combien|nombre|taille|âge|année|date|quand|distance|poids|cours|coût", re.I
+)
 
 
 def _terms(goal: str) -> set[str]:
@@ -97,8 +100,10 @@ def extract_llm(goal: str, answer_type: str, passage: str, intent: str = "encycl
 
 def _extract_once(goal: str, answer_type: str, passage: str, attempt: int, intent: str) -> Formulated | None:
     strict = " Copy the quote lines EXACTLY as they appear in the passage." if attempt else ""
-    data = llm.chat_json(EXTRACT_SYSTEM + MARKET_RULE * (intent == "market") + strict,
-                         f"Question: {goal}\nExpected type: {answer_type}\nPassages:\n{passage[:4000]}")
+    data = llm.chat_json(
+        EXTRACT_SYSTEM + MARKET_RULE * (intent == "market") + strict,
+        f"Question: {goal}\nExpected type: {answer_type}\nPassages:\n{passage[:4000]}",
+    )
     if data.get("found") is not True:
         return None
     value, quote = str(data.get("value", "")).strip(), str(data.get("quote", "")).strip()

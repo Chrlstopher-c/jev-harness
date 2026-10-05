@@ -1,9 +1,13 @@
 """Serveur WebSocket de la session: images vers le HUD, messages du HUD vers la session, /state en HTTP."""
+
 import json
 import threading
 from http import HTTPStatus
+from typing import Callable
 
 from loguru import logger
+from websockets.exceptions import ConnectionClosed
+from websockets.http11 import Request, Response
 from websockets.sync.server import ServerConnection, serve
 
 from .hub import Hub
@@ -22,8 +26,8 @@ def _pump(ws: ServerConnection, hub: Hub, outbox) -> None:
                 ws.send(frame[1])
             while not outbox.empty():
                 ws.send(json.dumps(outbox.get(), ensure_ascii=False))
-    except Exception:
-        return
+    except (ConnectionClosed, OSError) as err:
+        logger.info("client du flux déconnecté: {}", err)
 
 
 def _handler(session: Session):
@@ -39,14 +43,16 @@ def _handler(session: Session):
                     logger.warning("message ignoré: {}", err)
         finally:
             session.hub.remove_client(outbox)
+
     return handle
 
 
-def _http_state(session: Session):
-    def process(conn: ServerConnection, request):
+def _http_state(session: Session) -> Callable[[ServerConnection, Request], Response | None]:
+    def process(conn: ServerConnection, request: Request) -> Response | None:
         if request.path == "/state":
             return conn.respond(HTTPStatus.OK, json.dumps(session.state()) + "\n")
         return None
+
     return process
 
 

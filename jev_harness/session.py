@@ -1,4 +1,5 @@
 """Session interactive: Chromium persistant, flux d'images CDP, entrées de l'utilisateur relayées, commandes."""
+
 import base64
 import os
 import queue
@@ -7,8 +8,10 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import Callable
 
 from loguru import logger
+from playwright.sync_api import Error as PlaywrightError
 
 from .browser import Browser
 from .env import load_env
@@ -29,6 +32,7 @@ def normalize_url(text: str) -> str:
     if "." in text and " " not in text:
         return f"https://{text}"
     from urllib.parse import quote_plus
+
     return SEARCH_URL + quote_plus(text)
 
 
@@ -71,7 +75,7 @@ class Session:
         self.br.page.wait_for_timeout(ms)
         self._push_state()
 
-    def wait_until(self, cond, timeout_s: float) -> bool:
+    def wait_until(self, cond: Callable[[], bool], timeout_s: float) -> bool:
         end = time.time() + timeout_s
         while time.time() < end and not self.stop_requested:
             if cond():
@@ -102,19 +106,30 @@ class Session:
 
     def state(self) -> dict:
         page = self.br.page if self.br else None
-        return {"url": page.url if page else "", "busy": self.busy, "ready": self.br is not None, "brain": self.brain, "confirm": self.confirm_enabled, **self.hub.meta}
+        return {
+            "url": page.url if page else "",
+            "busy": self.busy,
+            "ready": self.br is not None,
+            "brain": self.brain,
+            "confirm": self.confirm_enabled,
+            **self.hub.meta,
+        }
 
     def say(self, role: str, text: str) -> None:
         self.hub.broadcast({"t": "chat", "role": role, "text": text})
 
     def run(self) -> None:
-        with Browser(grab=False, profile=self._profile_dir()) as br:
-            self.br = br
-            self._start_cast()
-            br.open("about:blank")
-            logger.info("session prête")
-            while not self._quit:
-                self._tick()
+        try:
+            with Browser(grab=False, profile=self._profile_dir()) as br:
+                self.br = br
+                self._start_cast()
+                br.open("about:blank")
+                logger.info("session prête")
+                while not self._quit:
+                    self._tick()
+        except Exception:
+            logger.exception("la session s'est arrêtée sur une erreur")
+            raise
 
     @staticmethod
     def _profile_dir() -> str:
@@ -174,7 +189,8 @@ class Session:
     def _title(self) -> str:
         try:
             return self.br.page.title()
-        except Exception:
+        except PlaywrightError as err:
+            logger.debug("titre indisponible: {}", err)
             return ""
 
     def _dispatch(self, c: dict) -> None:
@@ -185,8 +201,9 @@ class Session:
             elif t == "nav":
                 self.navigate(c["url"])
             elif t == "history" and not self.busy:
-                {"back": self.br.page.go_back, "forward": self.br.page.go_forward,
-                 "reload": self.br.page.reload}[c["dir"]](wait_until="commit")
+                {"back": self.br.page.go_back, "forward": self.br.page.go_forward, "reload": self.br.page.reload}[
+                    c["dir"]
+                ](wait_until="commit")
             elif t == "settings":
                 self.brain = "local" if c.get("brain") == "local" else "cloud"
                 self.confirm_enabled = bool(c.get("confirm", self.confirm_enabled))
@@ -221,11 +238,13 @@ class Session:
 
     def _on_say(self, text: str) -> None:
         from . import commands
+
         self.say("user", text)
         threading.Thread(target=commands.plan_and_queue, args=(self, text), daemon=True).start()
 
     def _run_steps(self, steps: list[dict]) -> None:
         from . import commands
+
         self.busy, self.stop_requested = True, False
         try:
             for step in steps:
@@ -239,6 +258,7 @@ class Session:
 
 def main() -> None:
     from .session_ws import serve_forever
+
     load_env()
     session = Session()
     port = int(os.environ["SESSION_PORT"])

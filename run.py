@@ -1,4 +1,5 @@
 """CLI: python run.py --brief <id> | python run.py --ask "<demande en langage naturel>" """
+
 import sys
 
 from loguru import logger
@@ -13,7 +14,12 @@ def resolve(argv: list[str]) -> tuple[str, list[str], str, str]:
         rec = briefs.get(argv[2])
         if rec is None:
             raise SystemExit(f"brief inconnu: {argv[2]}")
-        return rec["request"], list(rec.get("queries", [])), rec.get("answer_type", "text"), rec.get("intent", "encyclopedic")
+        return (
+            rec["request"],
+            list(rec.get("queries", [])),
+            rec.get("answer_type", "text"),
+            rec.get("intent", "encyclopedic"),
+        )
     return argv[2], [], "text", "encyclopedic"
 
 

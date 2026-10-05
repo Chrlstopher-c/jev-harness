@@ -4,7 +4,8 @@ Un seul package `jev_harness/`, découpé par capacité :
 - Navigateur : `browser.py` (page headless/X11), `display.py` (Xvfb), `session.py` + `session_ws.py` + `hub.py` (session interactive et flux).
 - Actions : `observe.py` (éléments numérotés), `actor.py` (gestes réels), `agent.py` + `agent_view.py` (boucle de tâche).
 - Échecs : `chess_adapters.py` (lecture/gestes par site), `chess_view.py` (coups candidats annotés), `chess_agent.py` (partie).
-- Commandes : `commands.py` (routeur LLM → outils).
+- Commandes : `commands.py` (routeur LLM → étapes), `command_tools.py` (les outils exécutés).
+- Scripts injectés : `js/` + `scripts.py` (aucun JavaScript inline dans le Python).
 - Clients : `jev.py` (JevK5, lecture de probabilités), `llm.py` (cloud), `echohub.py` + `echohub_load.py` (modèle local).
 - Transverse : `events.py` (journal en arbre), `env.py`.
 Définitions : « client » = appel d'un service externe sans logique métier ; « adaptateur » = lecture/gestes propres à un site.

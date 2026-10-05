@@ -1,4 +1,5 @@
-"""Distribution vers les clients WebSocket: dernière image seulement (les retardataires sautent des images) + messages JSON."""
+"""Distribution aux clients WebSocket: dernière image seulement (les retardataires sautent) + messages JSON."""
+
 import queue
 import threading
 

@@ -1,4 +1,5 @@
 """Magasin de briefs (JSON partagé avec le banc d'essai) et briefs de recherche."""
+
 import json
 import os
 import re

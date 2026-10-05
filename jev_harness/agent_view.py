@@ -1,4 +1,5 @@
 """Contexte réduit pour Jev: tâche, étape courante, historique court; options d'action numérotées."""
+
 import re
 from dataclasses import dataclass
 
@@ -16,9 +17,17 @@ class Action:
     element: Element | None = None
 
     def describe(self) -> str:
-        names = {"click": "clic sur", "type": "saisie dans", "toggle": "case à cocher", "select": "choix dans la liste", "scroll_down": "défilement vers le bas",
-                 "scroll_up": "défilement vers le haut", "enter": "touche Entrée", "back": "page précédente",
-                 "help": "demande d'aide"}
+        names = {
+            "click": "clic sur",
+            "type": "saisie dans",
+            "toggle": "case à cocher",
+            "select": "choix dans la liste",
+            "scroll_down": "défilement vers le bas",
+            "scroll_up": "défilement vers le haut",
+            "enter": "touche Entrée",
+            "back": "page précédente",
+            "help": "demande d'aide",
+        }
         return names[self.kind] + (f" « {self.element.label} »" if self.element else "")
 
 
@@ -33,7 +42,9 @@ def rank_elements(obs: Observation, focus: str, kind: str = "other") -> list[Ele
     def score(e: Element) -> float:
         hits = sum(t in e.label.lower() for t in terms)
         empty_field = e.kind in ("text", "password") and not e.value
-        kind_bonus = (1.5 if wants_input and empty_field else 0) + (1.0 if kind in ("toggle", "select") and e.kind == kind else 0)
+        kind_bonus = (1.5 if wants_input and empty_field else 0) + (
+            1.0 if kind in ("toggle", "select") and e.kind == kind else 0
+        )
         return hits + kind_bonus + (0.5 if e.focused else 0) - e.y / 100000
 
     usable = [e for e in obs.items if not e.disabled]
@@ -55,8 +66,16 @@ def _element_options(elements: list[Element]) -> dict[str, Action]:
     return out
 
 
-def build(obs: Observation, task: str, subgoal: str, idx: int, total: int, history: list[str],
-          typed_last: bool, kind: str = "other") -> tuple[str, list[str], dict[str, Action]]:
+def build(
+    obs: Observation,
+    task: str,
+    subgoal: str,
+    idx: int,
+    total: int,
+    history: list[str],
+    typed_last: bool,
+    kind: str = "other",
+) -> tuple[str, list[str], dict[str, Action]]:
     options = _element_options(rank_elements(obs, f"{subgoal} {task}", kind))
     if obs.can_down:
         options["scroll down"] = Action("scroll_down")
@@ -67,6 +86,8 @@ def build(obs: Observation, task: str, subgoal: str, idx: int, total: int, histo
     options["go back"] = Action("back")
     options[HELP] = Action("help")
     where = f"scrolled {round(100 * obs.scroll_y / obs.scroll_max)}%" if obs.scroll_max else "page fits the screen"
-    state = (f"Task: {task}\nStep {idx + 1}/{total}: {subgoal}\nLast actions: {'; '.join(history[-3:]) or 'none'}\n"
-             f"Page: {obs.title[:60]} ({where})")[:STATE_CHARS]
+    state = (
+        f"Task: {task}\nStep {idx + 1}/{total}: {subgoal}\nLast actions: {'; '.join(history[-3:]) or 'none'}\n"
+        f"Page: {obs.title[:60]} ({where})"
+    )[:STATE_CHARS]
     return state, list(options), options

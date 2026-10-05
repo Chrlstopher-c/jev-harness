@@ -1,4 +1,5 @@
 """Charge `.env.local` du projet dans l'environnement (sans écraser les variables déjà définies)."""
+
 import os
 from pathlib import Path
 

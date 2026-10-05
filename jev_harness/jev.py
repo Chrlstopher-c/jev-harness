@@ -1,4 +1,5 @@
 """Client JevK5: lecture de probabilités d'options (choice / oui-non), jamais de génération."""
+
 import os
 import time
 from dataclasses import dataclass

@@ -8,6 +8,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: ruff check --isolated --select E,F,W --ignore E501 .
+      - run: ruff check .
+      - run: ruff format --check .
       - run: python -m compileall -q jev_harness run.py
+      - run: playwright install --with-deps chromium
       - run: pytest -q

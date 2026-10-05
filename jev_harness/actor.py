@@ -1,25 +1,17 @@
-"""Gestes réels dans le navigateur: curseur visible qui se déplace, clic, frappe, défilement, surbrillance de la cible."""
+"""Gestes réels dans le navigateur: curseur visible, clic, frappe, défilement, surbrillance de la cible."""
+
 import math
 import random
 
+from loguru import logger
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import Page
 
 from .events import timed
+from .scripts import load_js
 
-GHOST = """([x, y]) => {
-  let c = document.getElementById('__jev_cursor');
-  if (!c) { c = document.createElement('div'); c.id = '__jev_cursor';
-    c.style.cssText = 'position:fixed;z-index:2147483647;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;' +
-      'background:#7aa2ff;border:2px solid #fff;box-shadow:0 0 0 3px #7aa2ff66;pointer-events:none;transition:none';
-    document.documentElement.appendChild(c); }
-  c.style.left = x + 'px'; c.style.top = y + 'px';
-}"""
-MARK = """([x, y, w, h]) => {
-  const d = document.createElement('div');
-  d.style.cssText = `position:fixed;z-index:2147483646;left:${x - w / 2 - 4}px;top:${y - h / 2 - 4}px;width:${w + 8}px;height:${h + 8}px;` +
-    'border:3px solid #ff5d5d;border-radius:6px;pointer-events:none;box-shadow:0 0 12px #ff5d5d99';
-  document.documentElement.appendChild(d); setTimeout(() => d.remove(), 900);
-}"""
+GHOST = load_js("ghost")
+MARK = load_js("mark")
 MOVE_STEPS = 14
 
 
@@ -31,8 +23,8 @@ class Actor:
     def _ghost(self, x: float, y: float) -> None:
         try:
             self.page.evaluate(GHOST, [x, y])
-        except Exception:
-            pass
+        except PlaywrightError as err:
+            logger.debug("curseur fantôme non affiché: {}", err)
 
     def move_to(self, x: float, y: float) -> None:
         x0, y0 = self.pos
@@ -50,8 +42,8 @@ class Actor:
     def mark(self, x: int, y: int, w: int, h: int) -> None:
         try:
             self.page.evaluate(MARK, [x, y, min(w, 600), min(h, 300)])
-        except Exception:
-            pass
+        except PlaywrightError as err:
+            logger.debug("surbrillance non affichée: {}", err)
 
     def click(self, x: int, y: int, w: int = 20, h: int = 20) -> None:
         with timed("browser", "déplacer la souris et cliquer"):

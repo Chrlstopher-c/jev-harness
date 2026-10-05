@@ -1,8 +1,10 @@
 """Écran virtuel (Xvfb) + capture continue vers frame.jpg, pour un navigateur avec fenêtre réelle."""
+
 import shutil
 import subprocess
 import time
 from pathlib import Path
+from subprocess import Popen
 
 from loguru import logger
 
@@ -22,7 +24,7 @@ def _free_display() -> int:
 class VirtualScreen:
     def __init__(self) -> None:
         self.display: str | None = None
-        self._procs: list[subprocess.Popen] = []
+        self._procs: list[Popen[bytes]] = []
 
     def start(self, grab: bool = True) -> bool:
         if not shutil.which("Xvfb") or (grab and not shutil.which("ffmpeg")):
@@ -30,29 +32,37 @@ class VirtualScreen:
             return False
         n = _free_display()
         w, h = SIZE
-        xvfb = subprocess.Popen(["Xvfb", f":{n}", "-screen", "0", f"{w}x{h}x24", "-nolisten", "tcp"],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self._procs.append(xvfb)
-        for _ in range(50):
-            if (X_SOCKETS / f"X{n}").exists():
-                break
-            time.sleep(0.1)
-        else:
-            logger.error("Xvfb n'a pas démarré")
-            self.stop()
+        if not self._spawn_xvfb(n, w, h):
             return False
         self.display = f":{n}"
-        if not grab:
-            logger.info("écran virtuel {} {}x{} (sans capture)", self.display, w, h)
-            return True
-        LIVE_DIR.mkdir(parents=True, exist_ok=True)
-        grab_proc = subprocess.Popen(
-            ["ffmpeg", "-loglevel", "error", "-f", "x11grab", "-framerate", "3", "-video_size", f"{w}x{h}",
-             "-i", self.display, "-q:v", "6", "-f", "image2", "-update", "1", "-atomic_writing", "1",
-             str(LIVE_DIR / "frame.jpg")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self._procs.append(grab_proc)
-        logger.info("écran virtuel {} {}x{}", self.display, w, h)
+        if grab:
+            self._spawn_grabber(w, h)
+        logger.info("écran virtuel {} {}x{}{}", self.display, w, h, "" if grab else " (sans capture)")
         return True
+
+    def _spawn_xvfb(self, n: int, w: int, h: int) -> bool:
+        cmd = ["Xvfb", f":{n}", "-screen", "0", f"{w}x{h}x24", "-nolisten", "tcp"]
+        try:
+            self._procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        except OSError as err:
+            logger.error("Xvfb impossible à lancer: {}", err)
+            return False
+        for _ in range(50):
+            if (X_SOCKETS / f"X{n}").exists():
+                return True
+            time.sleep(0.1)
+        logger.error("Xvfb n'a pas démarré")
+        self.stop()
+        return False
+
+    def _spawn_grabber(self, w: int, h: int) -> None:
+        LIVE_DIR.mkdir(parents=True, exist_ok=True)
+        opts = f"-loglevel error -f x11grab -framerate 3 -video_size {w}x{h} -i {self.display} -q:v 6"
+        cmd = ["ffmpeg", *opts.split(), *"-f image2 -update 1 -atomic_writing 1".split(), str(LIVE_DIR / "frame.jpg")]
+        try:
+            self._procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        except OSError as err:
+            logger.error("ffmpeg impossible à lancer, pas de capture: {}", err)
 
     def stop_grab(self) -> None:
         if len(self._procs) > 1:

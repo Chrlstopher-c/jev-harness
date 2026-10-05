@@ -1,4 +1,5 @@
-"""CLI: génère un brief depuis une demande en langage naturel. Écrit un JSON sur stdout (le banc d'essai l'enregistre)."""
+"""CLI: génère un brief depuis une demande en langage naturel, JSON sur stdout (le banc l'enregistre)."""
+
 import argparse
 import json
 import sys
@@ -16,8 +17,13 @@ def generate(request: str, backend: str) -> dict:
         return {"title": request[:TITLE_CHARS], "request": request, "queries": [], "answer_type": "text"}
     chat = echohub.chat_json if backend == "local" else llm.chat_json
     brief = planner.plan(request, chat)
-    return {"title": brief.goal[:TITLE_CHARS], "request": brief.goal, "queries": brief.queries,
-            "answer_type": brief.answer_type, "intent": brief.intent}
+    return {
+        "title": brief.goal[:TITLE_CHARS],
+        "request": brief.goal,
+        "queries": brief.queries,
+        "answer_type": brief.answer_type,
+        "intent": brief.intent,
+    }
 
 
 if __name__ == "__main__":

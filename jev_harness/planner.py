@@ -1,7 +1,8 @@
 """Le LLM comprend la demande en langage naturel et propose des requêtes; Jev exécute le reste."""
-from loguru import logger
 
 from typing import Callable
+
+from loguru import logger
 
 from . import llm
 from .briefs import Brief
@@ -14,9 +15,11 @@ INTENTS = {"encyclopedic", "market", "live", "other"}
 PLAN_SYSTEM = """You turn a user's request into a web-research brief. Reply with JSON only:
 {"goal": "the request rewritten as one precise question, same language as the user",
  "answer_type": "number|date|entity|text|list",
- "intent": "encyclopedic (stable facts, history, definitions) | market (prices, offers, listings, reviews, comparisons) | live (weather, scores, stock, news) | other",
+ "intent": "encyclopedic (stable facts, history, definitions) | market (prices, offers, listings, reviews,
+ comparisons) | live (weather, scores, stock, news) | other",
  "queries": ["2 to 4 web search queries, most direct first, in the language best suited to find the answer"]}
-For market questions, use queries that surface shops, listings or price guides (words like "occasion", "annonces", "tarif",
+For market questions, use queries that surface shops, listings or price guides (words like "occasion", "annonces",
+"tarif",
 "cote", "acheter", "price", "for sale") and vary the angle between queries. Never answer the question yourself."""
 
 REFORMULATE_SYSTEM = """A web research is stuck. You get the goal, queries already tried and sites already read.

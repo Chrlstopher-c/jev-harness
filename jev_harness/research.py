@@ -1,16 +1,17 @@
 """Recherche ouverte: requêtes -> résultats de plusieurs moteurs mélangés -> Jev choisit, lit, juge; le LLM vérifie."""
+
 import re
-from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from itertools import zip_longest
 from urllib.parse import urlparse
 
 from loguru import logger
+from playwright.sync_api import Error as PlaywrightError
 
-from . import jev, llm, planner, wikipedia
+from . import events, jev, llm, planner, wikipedia
 from .answer import NUMERIC_Q, Formulated, extract_llm, formulate
 from .browser import Browser, Hit
-from . import events
 from .events import span
 
 MAX_PAGES = 8
@@ -28,8 +29,10 @@ CONFIDENT = 0.8
 NONE_OPTION = "aucun de ces résultats"
 GIVE_UP_PROB = 0.85
 MIN_PAGE_CHARS = 200
-JUDGE_ASK = {"market": "Does the passage show prices or offers relevant to the question?",
-             "live": "Does the passage give the current figure asked for in the question?"}
+JUDGE_ASK = {
+    "market": "Does the passage show prices or offers relevant to the question?",
+    "live": "Does the passage give the current figure asked for in the question?",
+}
 
 
 @dataclass
@@ -128,7 +131,11 @@ def find_in_page(goal: str, br: Browser, intent: str = "encyclopedic") -> Found 
         sp["status"] = "ok" if top >= 0.5 else "miss"
         if top < 0.5:
             return None
-        wide = rank(goal, passages)[:MARKET_CONTEXT_CHUNKS] if intent == "market" else [p for p, _ in scored[:KEEP_CONTEXT]]
+        wide = (
+            rank(goal, passages)[:MARKET_CONTEXT_CHUNKS]
+            if intent == "market"
+            else [p for p, _ in scored[:KEEP_CONTEXT]]
+        )
         ctx = "\n---\n".join(wide)
         return Found(br.page.url, scored[0][0], top, context=ctx)
 
@@ -157,7 +164,8 @@ def visit(goal: str, br: Browser, hit: Hit, st: State) -> Found | None:
         with span("load", "Ouvrir la page dans le navigateur") as ld:
             try:
                 br.open(hit.url)
-            except Exception:
+            except (PlaywrightError, OSError) as err:
+                logger.warning("page {} inaccessible: {}", hit.url, err)
                 ld["status"], ld["detail"] = "error", "Page inaccessible"
                 pg["status"], pg["detail"] = "error", "Page inaccessible, on passe à la suivante"
                 return None
@@ -176,7 +184,9 @@ def visit(goal: str, br: Browser, hit: Hit, st: State) -> Found | None:
 
 
 def search_round(goal: str, query: str, br: Browser, st: State, max_pages: int) -> Found | None:
-    with span("gather", "Interroger Bing" + (" et Wikipédia (en parallèle)" if st.intent == "encyclopedic" else "")) as g:
+    with span(
+        "gather", "Interroger Bing" + (" et Wikipédia (en parallèle)" if st.intent == "encyclopedic" else "")
+    ) as g:
         hits = gather(br, query, st.visited, st.intent == "encyclopedic")
         g["detail"] = f"{len(hits)} résultats trouvés"
     taken = 0
@@ -234,8 +244,14 @@ def more_queries(goal: str, st: State) -> list[str]:
         return qs
 
 
-def research(br: Browser, goal: str, queries: list[str], answer_type: str = "text",
-             max_pages: int = MAX_PAGES, intent: str = "encyclopedic") -> Answer | None:
+def research(
+    br: Browser,
+    goal: str,
+    queries: list[str],
+    answer_type: str = "text",
+    max_pages: int = MAX_PAGES,
+    intent: str = "encyclopedic",
+) -> Answer | None:
     st = State(answer_type, intent)
     queue, found, rounds = list(queries), None, 0
     while queue and st.pages < max_pages:

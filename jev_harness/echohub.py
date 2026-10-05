@@ -1,4 +1,5 @@
 """Modèle local servi par EchoHub: état et génération JSON (flux SSE agrégé)."""
+
 import json
 import os
 
@@ -45,8 +46,10 @@ def chat_json(system: str, user: str, max_tokens: int = MAX_TOKENS) -> dict:
     st = state()
     if st.get("etat") != "pret":
         raise llm.LlmUnavailable(f"aucun modèle local prêt (état : {st.get('etat')}) : charge-en un d'abord")
-    body = {"messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "options": {"temperature": 0.2, "max_tokens": max_tokens}}
+    body = {
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "options": {"temperature": 0.2, "max_tokens": max_tokens},
+    }
     logger.info("génération locale avec {}", st.get("modele"))
     try:
         with httpx.stream("POST", f"{_base()}/inference/generer", json=body, timeout=GENERATE_TIMEOUT_S) as resp:
