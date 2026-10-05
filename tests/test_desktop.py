@@ -1,6 +1,7 @@
 import json
 import threading
 from collections.abc import Iterator
+from dataclasses import asdict
 from functools import partial
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -9,7 +10,7 @@ import httpx
 import pytest
 
 from jev_harness.desktop_ctl import APPS, DesktopCtl, DesktopError
-from jev_harness.desktop_server import EVENTS, Handler, _actions
+from jev_harness.desktop_server import EVENTS, Handler, _actions, watch
 from jev_harness.desktop_stack import Stack
 
 TREE = {
@@ -66,6 +67,9 @@ class Recorder(DesktopCtl):
     def __init__(self, tmp: Path) -> None:
         super().__init__(Stack(1, 2, tmp))
         self.calls: list[list[str]] = []
+
+    def state(self) -> dict:
+        return {"running": True, "windows": [asdict(w) for w in self.windows()]}
 
     def _msg(self, *args: str) -> str:
         self.calls.append(list(args))
@@ -160,3 +164,45 @@ def test_http_rejects_bad_requests(server: str) -> None:
     assert _call("POST", f"{server}/key", json={"keys": "rm -rf"}).status_code == 502
     assert _call("POST", f"{server}/nope", json={}).status_code == 404
     assert _call("GET", f"{server}/nope").status_code == 404
+
+
+def test_unexpected_error_returns_500_not_dropped_connection(tmp_path: Path) -> None:
+    ctl = Recorder(tmp_path)
+
+    def boom() -> dict:
+        raise RuntimeError("panne")
+
+    ctl.state = boom  # type: ignore[method-assign]
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, ctl, _actions(ctl)))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        r = _call("GET", f"http://127.0.0.1:{httpd.server_address[1]}/state")
+        assert r.status_code == 500 and "panne" in r.json()["error"]
+    finally:
+        httpd.shutdown()
+
+
+def test_watchdog_stops_server_when_stack_dies(tmp_path: Path) -> None:
+    class DeadStack:
+        def alive(self) -> bool:
+            return False
+
+    class FakeServer:
+        stopped = False
+
+        def shutdown(self) -> None:
+            self.stopped = True
+
+    server = FakeServer()
+    watch(DeadStack(), server, interval_s=0.01)  # type: ignore[arg-type]
+    assert server.stopped
+
+
+def test_state_refuses_when_stack_is_dead(tmp_path: Path) -> None:
+    class Dead(Recorder):
+        def __init__(self, tmp: Path) -> None:
+            super().__init__(tmp)
+
+    ctl = Dead(tmp_path)
+    with pytest.raises(DesktopError):
+        DesktopCtl.state(ctl)

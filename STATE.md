@@ -12,5 +12,7 @@
   `jev.yes_no` passé en choix yes/no (le type noul natif est défaillant : 35,6 % vs 100 %).
 - Cohabitation Jev+decider (05/10) : bf16+bf16 = OOM ; **Jev Q8_0 GGUF (llama-server, 4,6 Go) + decider (4,3 Go) = 10,3 Go sur 12,3, sans perte mesurable** (bench/README.md).
   Reste à brancher : shim /v1/systemone sur llama-server pour le lab/harnais, service « yeux » decider.
+- Stabilité (05/10) : fichier de PID + nettoyage des orphelins après kill -9 (vérifié en réel), watchdog (le service s'arrête si sway/wayvnc/
+  websockify meurt), réponses 500 JSON au lieu de connexions coupées, état refusé si la pile est morte. 63 tests, lint 0 violation, CI verte.
 - Piège : `/usr/bin/sway` a `cap_sys_nice` → temps réel → SIGKILL en rendu logiciel ; on lance une copie sans capability.
 - Piège : Hyprland ne démarre pas en headless pur ici (`CBackend::create() failed`) ; imbriqué il s'ouvre en fenêtre sur le bureau réel.

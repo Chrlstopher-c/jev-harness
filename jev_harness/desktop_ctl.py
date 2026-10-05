@@ -133,5 +133,7 @@ class DesktopCtl:
         return self._run(["grim", "-t", "jpeg", "-q", "70", "-s", f"{scale:.2f}", "-"]).stdout
 
     def state(self) -> dict:
+        if not self.stack.alive():
+            raise DesktopError("bureau virtuel interrompu (un composant s'est arrêté)")
         wins = [asdict(w) for w in self.windows()]
         return {"running": self.stack.alive(), "size": [1600, 900], "windows": wins}

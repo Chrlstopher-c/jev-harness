@@ -12,6 +12,8 @@ from typing import Callable
 
 from loguru import logger
 
+from .desktop_cleanup import PIDS_FILE, kill_stale, record_pid
+
 DESKTOP_DIR = Path(__file__).parent / "desktop"
 OUTPUT = "HEADLESS-1"
 SOCKET_WAIT_S = 15
@@ -59,6 +61,7 @@ class Stack:
 
     def start(self) -> None:
         self.run_dir.mkdir(parents=True, exist_ok=True)
+        kill_stale(self.run_dir)
         try:
             self._start_dbus()
             self._start_sway()
@@ -108,7 +111,7 @@ class Stack:
         sock.unlink(missing_ok=True)
         self.dbus_address = f"unix:path={sock}"
         proc = self._popen(["dbus-daemon", "--session", "--nofork", f"--address={self.dbus_address}"])
-        self.procs.append(proc)
+        self._track(proc)
         self._wait(sock.exists, "bus D-Bus privé", proc)
 
     def _start_sway(self) -> None:
@@ -121,7 +124,7 @@ class Stack:
             XDG_CURRENT_DESKTOP="sway",
         )
         proc = self._popen([sway_binary(), "-c", str(DESKTOP_DIR / "sway.conf")], env)
-        self.procs.append(proc)
+        self._track(proc)
         sock = Path(os.environ["XDG_RUNTIME_DIR"]) / f"sway-ipc.{os.getuid()}.{proc.pid}.sock"
         self._wait(sock.exists, "socket IPC de sway", proc)
         self.sway_sock = str(sock)
@@ -141,7 +144,7 @@ class Stack:
 
     def _spawn(self, name: str, cmd: list[str]) -> None:
         proc = self._popen(cmd, self.env())
-        self.procs.append(proc)
+        self._track(proc)
         time.sleep(0.4)
         if proc.poll() is not None:
             raise StackError(f"{name} s'est arrêté au démarrage (code {proc.returncode})")
@@ -160,6 +163,13 @@ class Stack:
             time.sleep(0.1)
         raise StackError(f"délai dépassé: {what}")
 
+    def _track(self, proc: subprocess.Popen) -> None:
+        self.procs.append(proc)
+        try:
+            record_pid(self.run_dir, proc.pid)
+        except OSError:
+            logger.warning("le nettoyage des orphelins ne connaîtra pas le PID {}", proc.pid)
+
     def alive(self) -> bool:
         return bool(self.procs) and all(p.poll() is None for p in self.procs)
 
@@ -173,3 +183,4 @@ class Stack:
             except subprocess.TimeoutExpired:
                 proc.kill()
         self.procs.clear()
+        (self.run_dir / PIDS_FILE).unlink(missing_ok=True)

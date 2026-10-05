@@ -1,47 +1,95 @@
 # ARBORESCENCE
-- jev_harness/actor.py
-- jev_harness/agent.py
-- jev_harness/agent_view.py
-- jev_harness/answer.py
-- jev_harness/brief_gen.py
-- jev_harness/briefs.py
-- jev_harness/browser.py
-- jev_harness/chess_adapters.py
-- jev_harness/chess_agent.py
-- jev_harness/chess_view.py
-- jev_harness/command_tools.py — outils exécutables par le routeur (navigation, briefs, moteurs, actions, jeux)
-- jev_harness/commands.py
-- jev_harness/desktop_stack.py — pile du bureau virtuel (sway headless, wayvnc, websockify, D-Bus)
-- jev_harness/desktop_ctl.py — fenêtres, souris, clavier, capture du bureau virtuel
-- jev_harness/desktop_server.py — API de contrôle du bureau virtuel
-- jev_harness/desktop/ — config sway, waybar, wayvnc
-- jev_harness/desktop_mcp.py — serveur MCP du bureau virtuel (stdio)
-- jev_harness/display.py
-- jev_harness/echohub_load.py
-- jev_harness/echohub.py
-- jev_harness/env.py
-- jev_harness/events.py
-- jev_harness/hub.py
-- jev_harness/jev.py
-- jev_harness/llm.py
-- jev_harness/observe.py
-- jev_harness/planner.py
-- jev_harness/research.py
-- jev_harness/runner.py
-- jev_harness/session.py
-- jev_harness/session_ws.py
-- jev_harness/site_report.py
-- jev_harness/wikipedia.py
-- jev_harness/scripts.py — chargeur des scripts JS injectés
-- jev_harness/js/*.js — scripts injectés dans les pages (observe, ghost, mark, board-read, rect)
-- run.py — CLI brief / question
-- bench/ — banc JevK5 vs decider-2b-vision (tâches, exécuteurs, métriques, rapport, README ; data/ et results/)
-- bench_chess.py — banc d'échecs (Jev vs heuristique vs hasard, jugé par Stockfish)
-- bench_jev.py — banc de latence de Jev
-- tests/test_desktop_mcp.py — outils MCP (enchaînement, validation, erreurs)
-- tests/test_desktop.py — contrôle du bureau virtuel (arbre sway, touches, API HTTP)
-- tests/ — unitaires (llm, answer/research, events, agent_view, chess_view) et pages Playwright (conftest.py)
-- start.sh / stop.sh / restart.sh — session manuelle (PID, log remis à zéro)
-- requirements.txt / requirements-dev.txt / ruff.toml / pytest.ini — dépendances et config tests
-- .github/workflows/ci.yml — lint, compilation, tests
-- .env.example — variables requises
+
+- .env.example — variables requises (placeholders)
+- .github/workflows/ci.yml — CI: ruff, format, compilation, tests (Playwright)
+- .gitignore
+- ARBORESCENCE.md — ce fichier
+- ARCHITECTURE.md — carte des domaines et définitions
+- README.md — lancement, stack, banc, MCP, bureau virtuel
+- STATE.md — état vivant du projet
+- TODO.md — tâches et backlog
+- bench/README.md — méthode, commandes, conclusion du banc
+- bench/__init__.py — Banc JevK5 vs decider-2b-vision: tâches à vérité terrain, exécution par modèle, métriques appariées
+- bench/capture_desktop.py — Capture des images réelles du bureau virtuel pour le banc de vision: n terminaux ouverts -> shots/<n>_<k>.jpg
+- bench/chess_tasks.py — Tâches d'échecs: choix parmi les coups candidats, pertes en centipions mesurées par Stockfish
+- bench/common.py — Format commun des tâches et des résultats du banc (JSON sur disque)
+- bench/make_tasks.py — Génère bench/data/tasks.json (graine fixe): python -m bench.make_tasks (STOCKFISH_JS requis pour les échecs)
+- bench/metrics.py — Métriques du banc: exactitude + IC de Wilson, calibration, pertes d'échecs, comparaisons appariées
+- bench/render.py — Rendu déterministe des images synthétiques du banc de vision (spec JSON -> image PIL)
+- bench/report.py — Rapport comparatif JevK5 vs decider-2b-vision (Markdown): python -m bench.report
+- bench/results/REPORT.md — rapport généré
+- bench/run_decider.py — Exécute le banc sur decider-2b-vision (venv de doom-agent, GPU): python -m bench.run_decider
+- bench/run_jev.py — Exécute le banc sur JevK5 (serveur /v1/systemone du labo): python -m bench.run_jev
+- bench/run_jev_gguf.py — JevK5 Q8_0 via llama-server (venv de doom-agent, paquet jevk5): python -m bench.run_jev_gguf [url]
+- bench/runner_common.py — Boucle commune: chaque tâche est posée dans deux ordres d'options (biais de position), probabilités moyennées
+- bench/text_tasks.py — Tâches texte à vérité terrain: lecture (EN/FR), raisonnement numérique et à deux sauts, oui/non ancré
+- bench/vision_tasks.py — Tâches de vision (decider-2b-vision seulement): images synthétiques et captures réelles du bureau virtuel
+- bench_chess.py — Banc d'échecs: coups de Jev vs heuristique vs hasard, jugés par Stockfish (perte en centipions)
+- bench_jev.py — Banc de latence de Jev: taille du contexte, concurrence, questions groupées. Usage: python bench_jev.py
+- jev_harness/actor.py — Gestes réels dans le navigateur: curseur visible, clic, frappe, défilement, surbrillance de la cible
+- jev_harness/agent.py — Agent d'interaction: le LLM planifie, Jev choisit l'élément, gestes réels, avancement vérifié sur la page
+- jev_harness/agent_view.py — Contexte réduit pour Jev: tâche, étape courante, historique court; options d'action numérotées
+- jev_harness/answer.py — Formuler la réponse finale: Jev choisit la phrase qui répond, puis la valeur chiffrée si elle existe
+- jev_harness/brief_gen.py — CLI: génère un brief depuis une demande en langage naturel, JSON sur stdout (le banc l'enregistre)
+- jev_harness/briefs.py — Magasin de briefs (JSON partagé avec le banc d'essai) et briefs de recherche
+- jev_harness/browser.py — Outils navigateur (Playwright headless): recherche, lecture de page. Aucune décision ici
+- jev_harness/chess_adapters.py — Plateau d'échecs: un adaptateur par site pour lire la position, trouver les cases, promouvoir
+- jev_harness/chess_agent.py — Partie d'échecs: le LLM écrit le plan, Jev choisit parmi les coups annotés, les coups sont de vrais clics
+- jev_harness/chess_view.py — Vue d'une partie pour Jev: coups légaux annotés (python-chess), contexte court, garde-fou matériel optionnel
+- jev_harness/command_tools.py — Outils exécutables par le routeur de commandes (navigation, recherche, briefs, moteurs, actions, jeux)
+- jev_harness/commands.py — Commandes en langage naturel: le LLM propose des étapes, la session n'exécute que ce qui a été demandé
+- jev_harness/desktop/sway.conf — config sway du bureau virtuel (écran 1600x900, raccourcis)
+- jev_harness/desktop/waybar.css — style de la barre
+- jev_harness/desktop/waybar.jsonc — config de la barre du bureau virtuel
+- jev_harness/desktop/wayvnc.conf — config wayvnc vide (évite la config de l'utilisateur)
+- jev_harness/desktop_cleanup.py — Nettoyage des orphelins du bureau virtuel (serveur tué sans arrêt propre): fichier de PID + vérification
+- jev_harness/desktop_ctl.py — Pilotage du bureau virtuel: fenêtres, lancement d'applis, souris, clavier, capture (sway IPC, wtype, grim)
+- jev_harness/desktop_mcp.py — Serveur MCP du bureau virtuel: des mains et des yeux peu coûteux pour Claude (texte d'abord, capture en dernier)
+- jev_harness/desktop_server.py — Service du bureau virtuel: démarre la pile et expose une API de contrôle JSON sur localhost
+- jev_harness/desktop_stack.py — Pile du bureau virtuel: sway headless + wayvnc + websockify, isolée de la session réelle
+- jev_harness/display.py — Écran virtuel (Xvfb) + capture continue vers frame.jpg, pour un navigateur avec fenêtre réelle
+- jev_harness/echohub.py — Modèle local servi par EchoHub: état et génération JSON (flux SSE agrégé)
+- jev_harness/echohub_load.py — Charger un modèle dans EchoHub: reproduit la planification de son MCP (métadonnées GGUF + profil machine → plan)
+- jev_harness/env.py — Charge `.env.local` du projet dans l'environnement (sans écraser les variables déjà définies)
+- jev_harness/events.py — Journal JSONL d'un run: étapes imbriquées (spans) + notes, lues en direct par le banc d'essai
+- jev_harness/hub.py — Distribution aux clients WebSocket: dernière image seulement (les retardataires sautent) + messages JSON
+- jev_harness/jev.py — Client JevK5: lecture de probabilités d'options (choice / oui-non), jamais de génération
+- jev_harness/js/board-read.js — script injecté: lecture du plateau d'échecs local
+- jev_harness/js/ghost.js — script injecté: curseur fantôme
+- jev_harness/js/mark.js — script injecté: surbrillance de la cible
+- jev_harness/js/observe.js — script injecté: éléments interactifs visibles numérotés
+- jev_harness/js/rect.js — script injecté: centre et taille d'un élément
+- jev_harness/llm.py — Client LLM (API compatible OpenAI) avec rotation Groq/Cerebras: un fournisseur limité passe la main au suivant
+- jev_harness/observe.py — Observation d'une page: éléments interactifs visibles, numérotés, pour qu'un agent choisisse où agir
+- jev_harness/planner.py — Le LLM comprend la demande en langage naturel et propose des requêtes; Jev exécute le reste
+- jev_harness/research.py — Recherche ouverte: requêtes -> résultats de plusieurs moteurs mélangés -> Jev choisit, lit, juge; le LLM vérifie
+- jev_harness/runner.py — Exécution d'un test complet (recherche ou analyse de site), dans un navigateur neuf ou déjà ouvert
+- jev_harness/scripts.py — Chargement des scripts JavaScript injectés dans les pages (dossier js/)
+- jev_harness/seed_briefs.json — briefs d'exemple (sans domaine réel)
+- jev_harness/session.py — Session interactive: Chromium persistant, flux d'images CDP, entrées de l'utilisateur relayées, commandes
+- jev_harness/session_ws.py — Serveur WebSocket de la session: images vers le HUD, messages du HUD vers la session, /state en HTTP
+- jev_harness/site_report.py — Analyse d'un site: Jev choisit les pages utiles, le LLM rédige le rapport, contrôlé contre le texte lu
+- jev_harness/wikipedia.py — Recherche Wikipédia par l'API (quelques dizaines de ms, sans navigateur)
+- pytest.ini — config pytest
+- requirements-dev.txt — ruff, pytest, pillow
+- requirements-mcp.txt — dépendances du serveur MCP (venv .venv-mcp)
+- requirements.txt — dépendances d'exécution
+- restart.sh — stop puis start
+- ruff.toml — lint 120 colonnes (E,F,W,I)
+- run.py — CLI: python run.py --brief <id> | python run.py --ask "<demande en langage naturel>" 
+- start.sh — lance la session interactive (PID, log remis à zéro)
+- stop.sh — arrête la session (SIGTERM puis KILL)
+- tests/conftest.py
+- tests/test_agent_view.py
+- tests/test_answer_research.py
+- tests/test_bench.py
+- tests/test_browser_pages.py
+- tests/test_chess_view.py
+- tests/test_desktop.py
+- tests/test_desktop_cleanup.py
+- tests/test_desktop_mcp.py
+- tests/test_events.py
+- tests/test_llm.py
+- bench/data/tasks.json — tâches générées (graine fixe)
+- bench/data/shots/ — captures réelles du bureau virtuel (prompt neutre)
+- bench/results/*.json — résultats bruts par modèle

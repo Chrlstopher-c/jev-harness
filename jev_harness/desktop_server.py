@@ -70,6 +70,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(404, {"error": "inconnu"})
         except (DesktopError, ValueError) as err:
             self._json(502, {"error": str(err)})
+        except Exception as err:  # noqa: BLE001 - jamais de connexion coupée sans réponse
+            logger.exception("GET {} en échec", self.path)
+            self._json(500, {"error": f"erreur interne: {err}"})
 
     def do_POST(self) -> None:
         action = self.actions.get(self.path)
@@ -86,6 +89,19 @@ class Handler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.BAD_REQUEST, {"error": f"requête invalide: {err}"})
         except DesktopError as err:
             self._json(502, {"error": str(err)})
+        except Exception as err:  # noqa: BLE001 - jamais de connexion coupée sans réponse
+            logger.exception("POST {} en échec", self.path)
+            self._json(500, {"error": f"erreur interne: {err}"})
+
+
+def watch(stack: Stack, server: ThreadingHTTPServer, interval_s: float = 2.0) -> None:
+    """Arrête le service si un composant de la pile meurt: le labo voit « arrêté » au lieu d'un bureau fantôme."""
+    while True:
+        time.sleep(interval_s)
+        if not stack.alive():
+            logger.error("un composant du bureau virtuel s'est arrêté: arrêt du service")
+            server.shutdown()
+            return
 
 
 def main() -> None:
@@ -103,6 +119,7 @@ def main() -> None:
         stop.set()
         threading.Thread(target=server.shutdown, daemon=True).start()
 
+    threading.Thread(target=watch, args=(stack, server), daemon=True).start()
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
     note("start", "bureau virtuel démarré")

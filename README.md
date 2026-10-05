@@ -17,6 +17,10 @@ Voir `bench/README.md` (méthode, commandes, conclusion).
 `desktop_screenshot`, `desktop_do` (plusieurs gestes en un appel). Il passe par le labo (`LAB_URL`, à fournir en variable d'environnement
 lors de l'enregistrement : `claude mcp add -s user bureau-virtuel -e LAB_URL=http://<hôte>:<port> -e PYTHONPATH=<projet> -- <projet>/.venv-mcp/bin/python -m jev_harness.desktop_mcp`).
 
+## Exploitation
+Le labo démarre/arrête la session et le bureau virtuel (onglets dédiés). Journaux : `logs/` (`desktop.log` du service) et `run/desktop/*.log`
+(sway, wayvnc, waybar, dbus). Après un arrêt brutal, relancer le bureau suffit : les processus orphelins sont nettoyés au démarrage.
+
 ## Bureau virtuel
 Un bureau Wayland complet et isolé (sway headless + wayvnc + websockify, D-Bus privé), piloté par `jev_harness/desktop_server.py`
 (démarré par le lab). Prérequis : `sway`, `wayvnc`, `grim`, `wtype`, `waybar`, `foot`. Variables : `DESKTOP_PORT`, `DESKTOP_VNC_PORT`,
