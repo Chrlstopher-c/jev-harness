@@ -28,9 +28,23 @@ Exactitude top-1 (IC95 de Wilson), moyenne des deux ordres d'options. Écart = J
 
 Écart apparié de perte (JevK5 − decider) : -99 cp [-165 ; -39] (négatif = JevK5 meilleur).
 
+### JevK5 Q8_0 (GGUF) contre bf16
+
+| Catégorie | bf16 | Q8_0 | Écart apparié (Q8 − bf16) |
+|---|---|---|---|
+| lecture_en | 100.0% [94.0% ; 100.0%] | 100.0% [94.0% ; 100.0%] | +0.0% [+0.0% ; +0.0%] · p=1.000 |
+| lecture_fr | 100.0% [91.2% ; 100.0%] | 100.0% [91.2% ; 100.0%] | +0.0% [+0.0% ; +0.0%] · p=1.000 |
+| oui_non_ancre | 100.0% [95.9% ; 100.0%] | 100.0% [95.9% ; 100.0%] | +0.0% [+0.0% ; +0.0%] · p=1.000 |
+| raisonnement_calcul | 92.0% [81.2% ; 96.8%] | 90.0% [78.6% ; 95.7%] | -2.0% [-6.0% ; +0.0%] · p=1.000 |
+| raisonnement_comparaison | 98.0% [89.5% ; 99.6%] | 98.0% [89.5% ; 99.6%] | +0.0% [+0.0% ; +0.0%] · p=1.000 |
+| raisonnement_deux_sauts | 100.0% [92.9% ; 100.0%] | 100.0% [92.9% ; 100.0%] | +0.0% [+0.0% ; +0.0%] · p=1.000 |
+
+Échecs, perte moyenne : bf16 119 cp, Q8 117 cp ; écart apparié -2 cp [-8 ; +2].
+
 ### Latence et mémoire
 
 | Modèle | p50 (ms/requête) | p95 (ms) | VRAM crête |
 |---|---|---|---|
 | jevk5 | 117 | 234 | 8 154 Mo (nvidia-smi sur jevk5-serve, 05/10) |
 | decider-2b-vision | 54 | 99 | 4299 |
+| jevk5-q8 | 127 | 238 | ≈4 600 Mo (llama-server, nvidia-smi) |

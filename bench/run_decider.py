@@ -9,6 +9,7 @@ from PIL import Image
 
 from .common import BENCH_DIR, Task, load_tasks
 from .render import render
+from .run_jev_gguf import gpu_used_mb
 from .runner_common import Ask, run
 
 MODEL_ID = "Mapika/decider-2b-vision"
@@ -57,7 +58,7 @@ def main() -> int:
             ask,
             "decider-2b-vision",
             {"model": MODEL_ID, "tasks": "toutes"},
-            extra=lambda: {"vram_peak_mb": round(torch.cuda.max_memory_allocated() / 2**20)},
+            extra=lambda: {"vram_peak_mb": round(torch.cuda.max_memory_allocated() / 2**20), **gpu_used_mb()},
         )
     except (OSError, RuntimeError, ImportError) as err:
         logger.error("banc decider interrompu: {}", err)

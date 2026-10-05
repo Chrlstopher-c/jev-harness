@@ -9,12 +9,19 @@ from .common import RESULTS_DIR, Task, load_results, load_tasks
 from .metrics import BLUNDER_CP, bootstrap_ci, choice_stats, chosen_cost, paired_accuracy
 
 MODELS = ("jevk5", "decider-2b-vision")
-MEASURED_VRAM = {"jevk5": "8 154 Mo (nvidia-smi sur jevk5-serve, 05/10)"}
+MEASURED_VRAM = {
+    "jevk5": "8 154 Mo (nvidia-smi sur jevk5-serve, 05/10)",
+    "jevk5-q8": "≈4 600 Mo (llama-server, nvidia-smi)",
+}
 
 
 def _rows(name: str) -> dict[str, dict]:
     data = load_results(name)
     return {r["id"]: r for r in data["rows"] if "probs" in r}
+
+
+def _has(name: str) -> bool:
+    return (RESULTS_DIR / f"{name}.json").exists()
 
 
 def _by_category(tasks: list[Task]) -> dict[str, list[Task]]:
@@ -97,6 +104,43 @@ def chess_section(tasks: list[Task], res: dict[str, dict[str, dict]]) -> list[st
     return out
 
 
+def q8_section(tasks: list[Task]) -> list[str]:
+    """JevK5 Q8_0 (GGUF) contre bf16 (oui/non du bf16 posé en choix, comme le Q8): perte de quantification."""
+    try:
+        q8, bf16, alt = _rows("jevk5-q8"), _rows("jevk5"), _rows("jevk5-yesno-choice")
+    except (OSError, ValueError):
+        return []
+    bf16 = {**bf16, **alt}
+    out = [
+        "",
+        "### JevK5 Q8_0 (GGUF) contre bf16",
+        "",
+        "| Catégorie | bf16 | Q8_0 | Écart apparié (Q8 − bf16) |",
+        "|---|---|---|---|",
+    ]
+    for cat, ts in sorted(_by_category([t for t in tasks if t.gold is not None and t.id in q8]).items()):
+        golds = [t.gold for t in ts]
+        a, b = [bf16[t.id]["probs"] for t in ts], [q8[t.id]["probs"] for t in ts]
+        sa, sb, pa = choice_stats(golds, a), choice_stats(golds, b), paired_accuracy(golds, b, a)
+        ci = f"[{pa['ci'][0]:+.1%} ; {pa['ci'][1]:+.1%}]"
+        out.append(f"| {cat} | {_fmt_acc(sa)} | {_fmt_acc(sb)} | {pa['diff']:+.1%} {ci} · p={pa['p']:.3f} |")
+    chess = [t for t in tasks if t.costs and t.id in q8]
+    if chess:
+        va, vb = (
+            [chosen_cost(t, bf16[t.id]["probs"]) for t in chess],
+            [chosen_cost(t, q8[t.id]["probs"]) for t in chess],
+        )
+        diffs = [y - x for x, y in zip(va, vb)]
+        lo, hi = bootstrap_ci(diffs)
+        out += [
+            "",
+            f"Échecs, perte moyenne : bf16 {st.mean(va):.0f} cp, Q8 {st.mean(vb):.0f} cp ; "
+            f"écart apparié {st.mean(diffs):+.0f} cp "
+            f"[{lo:+.0f} ; {hi:+.0f}].",
+        ]
+    return out
+
+
 def latency_section(res: dict[str, dict[str, dict]]) -> list[str]:
     out = [
         "",
@@ -105,7 +149,7 @@ def latency_section(res: dict[str, dict[str, dict]]) -> list[str]:
         "| Modèle | p50 (ms/requête) | p95 (ms) | VRAM crête |",
         "|---|---|---|---|",
     ]
-    for m in res:
+    for m in [*res, *(["jevk5-q8"] if _has("jevk5-q8") else [])]:
         meta = load_results(m)["meta"]
         out.append(
             f"| {m} | {meta.get('latency_p50_ms', 0):.0f} | {meta.get('latency_p95_ms', 0):.0f} | "
@@ -138,7 +182,7 @@ def build() -> str:
     chess = [t for t in tasks if t.costs]
     if chess:
         lines += chess_section(chess, res)
-    return "\n".join(lines + latency_section(res)) + "\n"
+    return "\n".join(lines + q8_section(tasks) + latency_section(res)) + "\n"
 
 
 def main() -> int:

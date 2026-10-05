@@ -12,5 +12,6 @@
 - [ ] Bureau virtuel : plusieurs bureaux en grille dans le lab ; Hyprland (config de Chris) imbriqué dans le sway headless.
 - [ ] Bureau virtuel : écriture/lecture sur les plateformes (LinkedIn...) seulement sur autorisation explicite de Chris.
 - [ ] Échecs : étendre le banc à 300+ positions ; tester d'autres représentations pour Jev (moins de tags, évaluation SF en entrée) avant de conclure.
-- [ ] Faire cohabiter Jev (Q8 GGUF ~4,5 Go) et decider-vision (4,3 Go) sur 12 Go ; tester decider-4b (texte) comme point intermédiaire.
+- [x] Cohabitation Jev Q8 + decider-vision testée (voir bench/README.md).
+- [ ] Shim /v1/systemone au-dessus de llama-server (Jev Q8) et option « Jev Q8 » dans le lab ; service decider-vision (yeux) + outil MCP ; tester decider-4b.
 - [ ] Banc : plus de captures de bureau réelles et de tâches de vision (n=15 trop petit), graines multiples.
