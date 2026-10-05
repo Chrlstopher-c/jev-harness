@@ -11,6 +11,10 @@
 - jev_harness/chess_view.py
 - jev_harness/command_tools.py — outils exécutables par le routeur (navigation, briefs, moteurs, actions, jeux)
 - jev_harness/commands.py
+- jev_harness/desktop_stack.py — pile du bureau virtuel (sway headless, wayvnc, websockify, D-Bus)
+- jev_harness/desktop_ctl.py — fenêtres, souris, clavier, capture du bureau virtuel
+- jev_harness/desktop_server.py — API de contrôle du bureau virtuel
+- jev_harness/desktop/ — config sway, waybar, wayvnc
 - jev_harness/display.py
 - jev_harness/echohub_load.py
 - jev_harness/echohub.py
@@ -31,6 +35,7 @@
 - jev_harness/js/*.js — scripts injectés dans les pages (observe, ghost, mark, board-read, rect)
 - run.py — CLI brief / question
 - bench_jev.py — banc de latence de Jev
+- tests/test_desktop.py — contrôle du bureau virtuel (arbre sway, touches, API HTTP)
 - tests/ — unitaires (llm, answer/research, events, agent_view, chess_view) et pages Playwright (conftest.py)
 - start.sh / stop.sh / restart.sh — session manuelle (PID, log remis à zéro)
 - requirements.txt / requirements-dev.txt / ruff.toml / pytest.ini — dépendances et config tests

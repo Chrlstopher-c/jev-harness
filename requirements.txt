@@ -5,3 +5,4 @@ httpx==0.28.1
 loguru==0.7.3
 playwright==1.63.0
 websockets==17.2
+websockify==0.13.0

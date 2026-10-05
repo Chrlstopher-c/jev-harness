@@ -1,0 +1,5 @@
+* { font-family: "JetBrains Mono", monospace; font-size: 12px; }
+window#waybar { background: #14161c; color: #e8eaef; }
+#workspaces button { color: #8a90a0; padding: 0 8px; }
+#workspaces button.focused { color: #7aa2ff; }
+#clock, #window { padding: 0 12px; }
