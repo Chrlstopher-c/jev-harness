@@ -15,12 +15,12 @@ SETTLE_S = 1.6
 
 
 def _call(method: str, path: str, body: dict | None = None) -> httpx.Response:
-    base = os.environ["LAB_URL"].rstrip("/") + "/api/desktop"
+    base = os.environ["BV_URL"].rstrip("/") + "/api"
     try:
         r = httpx.request(method, f"{base}/{path}", json=body, timeout=20)
         r.raise_for_status()
     except httpx.HTTPError as err:
-        logger.error("labo/bureau: {} {} échoué: {}", method, path, err)
+        logger.error("bureau-virtuel: {} {} échoué: {}", method, path, err)
         raise
     return r
 

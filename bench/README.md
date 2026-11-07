@@ -6,7 +6,7 @@ Stockfish (échecs), rendu connu (images synthétiques), état réel du bureau v
 
 ```
 STOCKFISH_JS=<script wasm> python -m bench.make_tasks          # tâches (graine fixe) -> data/tasks.json
-LAB_URL=http://<hôte>:<port> python -m bench.capture_desktop    # captures réelles (bureau virtuel démarré)
+BV_URL=http://<hôte>:<port> python -m bench.capture_desktop    # captures réelles (bureau virtuel démarré)
 python -m bench.run_jev [--yesno-choice]                        # JevK5 chargé dans le labo
 PYTHONPATH=. <venv doom-agent>/bin/python -m bench.run_decider  # decider-2b-vision, GPU libre
 python -m bench.report                                          # -> results/REPORT.md

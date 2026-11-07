@@ -5,7 +5,7 @@
 - .gitignore
 - ARBORESCENCE.md — ce fichier
 - ARCHITECTURE.md — carte des domaines et définitions
-- README.md — lancement, stack, banc, MCP, bureau virtuel
+- README.md — lancement, stack, banc
 - STATE.md — état vivant du projet
 - TODO.md — tâches et backlog
 - bench/README.md — méthode, commandes, conclusion du banc
@@ -38,15 +38,6 @@
 - jev_harness/chess_view.py — Vue d'une partie pour Jev: coups légaux annotés (python-chess), contexte court, garde-fou matériel optionnel
 - jev_harness/command_tools.py — Outils exécutables par le routeur de commandes (navigation, recherche, briefs, moteurs, actions, jeux)
 - jev_harness/commands.py — Commandes en langage naturel: le LLM propose des étapes, la session n'exécute que ce qui a été demandé
-- jev_harness/desktop/sway.conf — config sway du bureau virtuel (écran 1600x900, raccourcis)
-- jev_harness/desktop/waybar.css — style de la barre
-- jev_harness/desktop/waybar.jsonc — config de la barre du bureau virtuel
-- jev_harness/desktop/wayvnc.conf — config wayvnc vide (évite la config de l'utilisateur)
-- jev_harness/desktop_cleanup.py — Nettoyage des orphelins du bureau virtuel (serveur tué sans arrêt propre): fichier de PID + vérification
-- jev_harness/desktop_ctl.py — Pilotage du bureau virtuel: fenêtres, lancement d'applis, souris, clavier, capture (sway IPC, wtype, grim)
-- jev_harness/desktop_mcp.py — Serveur MCP du bureau virtuel: des mains et des yeux peu coûteux pour Claude (texte d'abord, capture en dernier)
-- jev_harness/desktop_server.py — Service du bureau virtuel: démarre la pile et expose une API de contrôle JSON sur localhost
-- jev_harness/desktop_stack.py — Pile du bureau virtuel: sway headless + wayvnc + websockify, isolée de la session réelle
 - jev_harness/display.py — Écran virtuel (Xvfb) + capture continue vers frame.jpg, pour un navigateur avec fenêtre réelle
 - jev_harness/echohub.py — Modèle local servi par EchoHub: état et génération JSON (flux SSE agrégé)
 - jev_harness/echohub_load.py — Charger un modèle dans EchoHub: reproduit la planification de son MCP (métadonnées GGUF + profil machine → plan)
@@ -72,7 +63,6 @@
 - jev_harness/wikipedia.py — Recherche Wikipédia par l'API (quelques dizaines de ms, sans navigateur)
 - pytest.ini — config pytest
 - requirements-dev.txt — ruff, pytest, pillow
-- requirements-mcp.txt — dépendances du serveur MCP (venv .venv-mcp)
 - requirements.txt — dépendances d'exécution
 - restart.sh — stop puis start
 - ruff.toml — lint 120 colonnes (E,F,W,I)
@@ -85,9 +75,6 @@
 - tests/test_bench.py
 - tests/test_browser_pages.py
 - tests/test_chess_view.py
-- tests/test_desktop.py
-- tests/test_desktop_cleanup.py
-- tests/test_desktop_mcp.py
 - tests/test_events.py
 - tests/test_llm.py
 - bench/data/tasks.json — tâches générées (graine fixe)

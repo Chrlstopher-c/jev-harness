@@ -7,11 +7,7 @@ Un seul package `jev_harness/`, découpé par capacité :
 - Commandes : `commands.py` (routeur LLM → étapes), `command_tools.py` (les outils exécutés).
 - Scripts injectés : `js/` + `scripts.py` (aucun JavaScript inline dans le Python).
 - Clients : `jev.py` (JevK5, lecture de probabilités), `llm.py` (cloud), `echohub.py` + `echohub_load.py` (modèle local).
-- Bureau virtuel : `desktop_stack.py` (sway headless, wayvnc, websockify, D-Bus privé), `desktop_ctl.py` (fenêtres, souris,
-  clavier, capture), `desktop_server.py` (API de contrôle JSON sur localhost) ; config dans `desktop/`.
-- Robustesse : `desktop_cleanup.py` (fichier de PID, nettoyage des orphelins au démarrage) ; le service s'arrête si un composant meurt.
-- MCP : `desktop_mcp.py` (outils Claude → API du labo → bureau virtuel).
+- Bureau virtuel : déplacé dans le projet `bureau-virtuel` (le banc l'appelle via `BV_URL`).
 - Transverse : `events.py` (journal en arbre), `env.py`.
 Définitions : « client » = appel d'un service externe sans logique métier ; « adaptateur » = lecture/gestes propres à un site.
 Frontière : le lab pilote la session par HTTP/WebSocket uniquement ; Jev n'est jamais appelé en parallèle de lui-même.
-Isolation du bureau virtuel : environnement nettoyé (jamais le WAYLAND_DISPLAY réel), bus D-Bus privé, profils navigateur dédiés.
